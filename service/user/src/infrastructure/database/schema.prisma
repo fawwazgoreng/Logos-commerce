@@ -10,8 +10,20 @@ datasource db {
 model User {
     id String @default(uuid()) @unique
     username String
-    email String
+    email String @unique
     roles String
     password String
     image String
+}
+
+model user_audit {
+    id String @default(uuid()) @unique
+    ip_addres String
+    device_type String
+    id_user String
+    roles String
+    failed Boolean
+    action String
+    failed_message String
+    user User @relation(fields: [id_user] , references: [id])
 }

@@ -2,3 +2,4 @@
 node_modules/
 src/infrastructure/database/generated
 src/infrastructure/database/migrations
+public/images

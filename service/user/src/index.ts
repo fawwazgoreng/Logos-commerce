@@ -25,7 +25,7 @@ app.post('/login' , async (c) => {
     
 });
 
-app.delete('logout' , (c) => {
+app.delete('logout' , async (c) => {
     try {
         
     } catch (error) {

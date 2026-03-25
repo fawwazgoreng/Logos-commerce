@@ -1,6 +1,75 @@
+import { PrismaClientKnownRequestError } from "../infrastructure/database/generated/prisma/runtime/client"
+import { userLogin, userRegister } from "../userTypes"
+import { checkPassword } from "../utils/hashPasword";
 
 export default class UserModel {
-    login = async () => {
-        
+    login = async (req : userLogin) => {
+        try {
+            const user = await prisma?.user.findFirst({
+                where: {
+                    email: req.email
+                },
+                select: {
+                    id: true,
+                    roles: true,
+                    email: true,
+                    username: true,
+                    password: true
+                }
+            });
+            if (!user || !checkPassword({password: req.password, hashed: user.password})) throw {
+                status: 404,
+                message: "username or password wrong"
+            }
+            return user;
+        } catch (error : any) {
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == "P2025") {
+                    throw {
+                        status: 404,
+                        message: "username or password wrong"
+                    }
+                }
+                throw {
+                    status: 400,
+                    message: error.message,
+                    error: error.code + ` ${error.cause}`
+                }
+            }
+            throw {
+                status: 500,
+                message: "internal server error"
+            }
+        }
+    }
+    register = async (req : userRegister) => {
+        try {
+            const user = await prisma?.user.create({
+                data: {
+                    email: req.email,
+                    username: req.username,
+                    password: req.password,
+                    image: req.image
+               } 
+            });
+        } catch (error : any) {
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == "P2002") {
+                    throw {
+                        status: 401,
+                        message: "email has used"
+                    }
+                }
+                throw {
+                    status: 400,
+                    message: error.message,
+                    error: error.code + ` ${error.cause}`
+                }
+            }
+            throw {
+                status: 500,
+                message: "internal server error"
+            }
+        }
     }
 }
