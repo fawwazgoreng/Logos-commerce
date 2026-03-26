@@ -1,42 +1,51 @@
 # 🏛️ Logos-Commerce
 
-> Sebuah eksperimen microservices yang terinspirasi dari prinsip **Logos** (rasio/logika alam semesta) dalam Stoikisme.
+> A microservices experiment inspired by the principle of **Logos** (the rational order of the universe) in Stoic philosophy.
 
 ---
 
-## 📝 Preview Proyek
-**Logos-Commerce** adalah proyek pembelajaran arsitektur *distributed system* bertema e-commerce. Proyek ini dibangun bukan hanya untuk memproses transaksi, tetapi untuk menerapkan **ketenangan sistem (resilience)** melalui kontainerisasi dan orkestrasi.
+## 📝 Project Overview
 
-Saat ini, proyek berada dalam fase **Design & Architecture**. Rencana implementasi mencakup:
-* **Decoupled Services:** Memisahkan logika *Auth*, *Product*, dan *Order* sesuai prinsip kemandirian Stoik.
-* **Resilient Infrastructure:** Menggunakan Docker untuk memastikan aplikasi berjalan identik di lingkungan mana pun.
-* **Declarative Logic:** Mengadopsi gaya konfigurasi Kubernetes (Desired State) — menyatakan hasil akhir, bukan sekadar perintah.
+**Logos-Commerce** is a learning project focused on *distributed system architecture* within an e-commerce domain. This project is not only about processing transactions, but also about implementing **system resilience** through containerization and orchestration.
+
+Currently, the project is in the **Design & Architecture** phase. The planned implementation includes:
+
+- **Decoupled Services:** Separating *Auth*, *Product*, and *Order* logic based on the Stoic principle of independence.
+- **Resilient Infrastructure:** Using Docker to ensure the application runs consistently across different environments.
+- **Declarative Logic:** Adopting a Kubernetes-style configuration (Desired State) — defining outcomes rather than step-by-step commands.
+
+---
+
+## 🏗️ Architecture (Planned)
+
+The project will be divided into several core services:
+
+1. **Gateway:** A single entry point that intelligently manages data flow.
+2. **Catalog:** The source of truth for all product data.
+3. **Order:** A transaction service designed to remain stable under high traffic.
 
 ---
 
-## 🏗️ Arsitektur (Planned)
-Proyek ini akan dibagi menjadi beberapa layanan inti:
-1. **Gateway:** Pintu masuk tunggal yang mengatur aliran data dengan bijaksana.
-2. **Catalog:** Sumber kebenaran untuk semua data produk.
-3. **Order:** Layanan transaksi yang tetap stabil meski di bawah tekanan trafik.
+## 🚀 Planned Tech Stack
 
-## 🚀 Rencana Tech Stack
-* **Language:** Typescript and vue
-* **Container:** Docker & Docker Compose
-* **Orchestration:** Kubernetes (Target akhir)
+- **Language:** TypeScript & Vue
+- **Containerization:** Docker & Docker Compose
+- **Orchestration:** Kubernetes (final target)
 
 ---
-*"Cintailah prosesnya (Amor Fati), dan biarkan logika (Logos) menuntun setiap baris kodemu."*
+
+*"Embrace the process (Amor Fati), and let logic (Logos) guide every line of your code."*
+
+---
 
 ## 🤝 Contributing
 
-1. Fork this repository
-2. Create your feature branch: `git checkout -b feat/your-feature`
-3. Commit your changes: `git commit -m 'feat: add your feature'`
-4. Push to the branch: `git push origin feat/your-feature`
-5. Open a Pull Request
+1. Fork this repository  
+2. Create your feature branch: `git checkout -b feat/your-feature`  
+3. Commit your changes: `git commit -m 'feat: add your feature'`  
+4. Push to the branch: `git push origin feat/your-feature`  
+5. Open a Pull Request  
 
 ---
 
 ## 📄 License
----
