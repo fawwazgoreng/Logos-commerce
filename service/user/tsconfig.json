@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "strict": true,
+    "target": "ES2020",
+    "moduleResolution": "node",
+    "module": "ESNext",
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"
   }

@@ -1,17 +1,29 @@
 import { secret_key } from "../config";
+import { nanoid } from "nanoid";
 
 const encode = (req: string) => new TextEncoder().encode(req);
 const decode = (req: Buffer) => new TextDecoder().decode(req);
 
 const getKey = async () => {
-    const key = crypto.getRandomValues(Buffer.from(secret_key , "utf-8"));
+    const raw = encode(secret_key);
+    const key = await crypto.subtle.digest("SHA-256", raw);
     return await crypto.subtle.importKey(
-        "raw",key,"AES-GCM",true , ["encrypt" , "decrypt"]
+        "raw",key,"AES-GCM",false , ["encrypt" , "decrypt"]
     );
 }
 
-export const encrypToken = () => {
-    
+export const encrypToken = async (val: string) => {
+    const key = await getKey();
+    const unique = nanoid(12);
+    const iv = encode(unique);
+    const buffer = encode(val);
+    const encrypted =  await crypto.subtle.encrypt({
+        name: "AES-GCM",
+        iv
+    }, key, buffer);
+    const bytes = new Uint8Array(encrypted);
+    const token = unique + bytes.toBase64();
+    return token;
 }
 
 export const decrypToken = () => {

@@ -1,5 +1,5 @@
 import { PrismaClientKnownRequestError } from "../infrastructure/database/generated/prisma/runtime/client"
-import { userLogin, userRegister } from "../userTypes"
+import { userLogin, userRegisterValue } from "../userTypes"
 import { checkPassword } from "../utils/hashPasword";
 
 export default class UserModel {
@@ -42,16 +42,18 @@ export default class UserModel {
             }
         }
     }
-    register = async (req : userRegister) => {
+    register = async (req : userRegisterValue) => {
         try {
             const user = await prisma?.user.create({
                 data: {
                     email: req.email,
                     username: req.username,
                     password: req.password,
-                    image: req.image
+                    image: req.image,
+                    roles: req.role
                } 
             });
+            return user;
         } catch (error : any) {
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == "P2002") {

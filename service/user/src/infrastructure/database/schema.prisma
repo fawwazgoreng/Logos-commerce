@@ -8,22 +8,32 @@ datasource db {
 }
 
 model User {
-    id String @default(uuid()) @unique
-    username String
-    email String @unique
-    roles String
-    password String
-    image String
+    id            String          @default(uuid()) @unique
+    username      String
+    email         String          @unique
+    roles         String
+    password      String
+    image         String
+    refreshTokens refresh_token[]
+    userAudits    user_audit[]
+}
+
+model refresh_token {
+    id         String   @default(uuid()) @unique
+    user_id    String
+    expired    DateTime @default(now())
+    created_at DateTime @default(now())
+    user       User     @relation(fields: [user_id], references: [id])
 }
 
 model user_audit {
-    id String @default(uuid()) @unique
-    ip_addres String
-    device_type String
-    id_user String
-    roles String
-    failed Boolean
-    action String
+    id             String  @unique @default(uuid())
+    ip_addres      String
+    device_type    String
+    id_user        String
+    roles          String
+    failed         Boolean
+    action         String
     failed_message String
-    user User @relation(fields: [id_user] , references: [id])
+    user           User    @relation(fields: [id_user], references: [id])
 }
