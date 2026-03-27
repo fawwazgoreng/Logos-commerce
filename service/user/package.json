@@ -9,11 +9,13 @@
     "@prisma/client": "^7.5.0",
     "hono": "^4.12.7",
     "nanoid": "^5.1.7",
+    "nodemailer": "^8.0.4",
     "pg": "^8.20.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.20.0",
     "prisma": "^7.5.0"
   }

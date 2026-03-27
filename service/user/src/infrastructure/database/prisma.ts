@@ -1,9 +1,9 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { databaseEnv, node_env } from "../../config";
 import { PrismaClient } from "./generated/prisma/client";
+import { env } from "../../config";
 
 
-const connectionString = databaseEnv;
+const connectionString = env.DATABASE_URL;
 
 declare global {
     var prisma : PrismaClient | undefined
@@ -12,7 +12,7 @@ declare global {
 const adapter = new PrismaPg({ connectionString });
 const prisma = globalThis.prisma ?? new PrismaClient({ adapter , log: ["error" , "query" , "warn"]});
 
-if (node_env != "production") {
+if (env.NODE_ENV != "production") {
     global.prisma = prisma;
 }
 

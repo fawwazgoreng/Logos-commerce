@@ -8,18 +8,21 @@ datasource db {
 }
 
 model User {
-    id            String          @default(uuid()) @unique
-    username      String
-    email         String          @unique
-    roles         String
-    password      String
-    image         String
-    refreshTokens refresh_token[]
-    userAudits    user_audit[]
+    id                String              @unique @default(uuid())
+    username          String
+    email             String              @unique
+    roles             String
+    password          String
+    image             String
+    verify            Boolean
+    verify_at         DateTime?
+    refreshTokens     refresh_token[]
+    userAudits        user_audit[]
+    codeVerifications code_verification[]
 }
 
 model refresh_token {
-    id         String   @default(uuid()) @unique
+    id         String   @unique @default(uuid())
     user_id    String
     expired    DateTime @default(now())
     created_at DateTime @default(now())
@@ -30,10 +33,20 @@ model user_audit {
     id             String  @unique @default(uuid())
     ip_addres      String
     device_type    String
-    id_user        String
+    user_id        String
     roles          String
     failed         Boolean
     action         String
     failed_message String
-    user           User    @relation(fields: [id_user], references: [id])
+    user           User    @relation(fields: [user_id], references: [id])
+}
+
+model code_verification {
+    id         String   @unique @default(uuid())
+    user_id    String
+    code       String
+    status     String
+    created_at DateTime @default(now())
+    expired    DateTime @default(now())
+    user       User     @relation(fields: [user_id], references: [id])
 }
