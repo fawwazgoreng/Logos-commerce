@@ -10,8 +10,12 @@ export const signedJwt = async (req : userToken) => {
     }
 }
 
-export const verifyJwt = async (token: string) => {
+export const verifyJwt = async (token?: string) => {
     try {
+        if (!token) throw {
+            status: 401,
+            message: "unauthorized please login first"
+        };
     return await verify(token, secret_key, "HS256");
     } catch (error) {
         throw {

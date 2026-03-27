@@ -3,7 +3,7 @@ import { StatusCode } from "hono/utils/http-status";
 import prisma from "./infrastructure/database/prisma";
 import UserRead from "./user/read";
 import { userToken } from "./userTypes";
-import { signedJwt } from "./utils/jwtToken";
+import { signedJwt, verifyJwt } from "./utils/jwtToken";
 import { setCookie, deleteCookie } from "hono/cookie";
 
 const app = new Hono();
@@ -29,13 +29,12 @@ auth.get("/health", async (c) => {
 auth.post("/login", async (c) => {
     try {
         const request = await c.req.json();
-        const { res, token } = await userRead.login(request);
+        const { user, token } = await userRead.login(request);
 
         const now = new Date();
-
+        
         const jwtPayload: userToken = {
-            ...res,
-            created_at: now,
+            ...user,
             expired: new Date(now.getTime() + 1000 * 60 * 15),
         };
 
@@ -57,18 +56,35 @@ auth.post("/login", async (c) => {
             message: "login succesfully",
             access_token,
         });
-    } catch (error) {
-        throw error;
+    } catch (error: any) {
+        throw {
+            status: error.status || 500,
+            message: error.message || "internal server error",
+            error: error.error,
+        };
+    }
+});
+
+auth.use('/', async (c , next) => {
+    try {
+        const token = c.req.header("Authorization");
+        await verifyJwt(token);
+        await next();
+    } catch (error : any) {
+        throw {
+            status: error.status || 500,
+            message: error.message || "internal server error",
+            error: error.error,
+        }
     }
 });
 
 auth.delete("/logout", async (c) => {
     try {
-        deleteCookie(c, "refresh-token", {
-            path: "/",
-        });
-
+        
+        c.status(200);
         return c.json({
+            status: 200,
             message: "logout success",
         });
     } catch (error) {
@@ -84,7 +100,7 @@ app.onError((error: any, c: Context) => {
     const res = {
         status: error.status || 500,
         message: error.message || "internal server error",
-        error: error.error || "internal server error",
+        error: error.error,
     };
     c.status(res.status as StatusCode);
     return c.json(res);

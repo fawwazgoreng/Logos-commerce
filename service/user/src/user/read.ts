@@ -1,24 +1,41 @@
 import { ZodError } from "zod";
-import { monitoring, userLogin, userToken } from "../userTypes"
+import { monitoring, refresh_token_create, userLogin, userToken } from "../userTypes"
 import { UserValidate } from "./validate"
 import UserModel from "./model";
 import { encrypToken } from "../utils/encrypToken";
+import RefreshTokenModel from "./refresh.model";
 
 export default class UserRead {
-    constructor(private validate =  new UserValidate(), private userModel = new UserModel()) {}
+    constructor(private validate =  new UserValidate(), private userModel = new UserModel() , private refreshTokenModel = new RefreshTokenModel()) {}
     login = async (req: userLogin) => {
         try {
             const payload = this.validate.login(req);
             const user = await this.userModel.login(payload);
-            const res : userToken = {
+            const now = new Date();
+            const expired = new Date(Date.now() + Date.now() + 1000 * 60 * 60 * 24 * 7);
+            const res = {
                 id: user.id,
                 username: user.username,
                 role: user.roles as "seller" || "user",
-                email: user.email
+                email: user.email,
+                created_at: now,
             }
-            const token = await encrypToken(JSON.stringify(res));
+            const refreshTokenPayload: refresh_token_create = {
+                user_id: user.id,
+                expired,
+                created_at: now
+                
+            }
+            const refresh_token = await this.refreshTokenModel.create(refreshTokenPayload);
+            const refresh_token_raw = {
+                id: refresh_token?.id,
+                role: user.roles as "seller" || "user",
+                created_at: now,
+                expired
+            }
+            const token = await encrypToken(JSON.stringify(refresh_token_raw));
             return {
-                res,
+                user: res,
                 token
             };
         } catch (error : any) {

@@ -12,13 +12,13 @@ export type userRegister = {
 };
 
 export type userToken = {
-    id: string,
-    email: string,
+    id: string;
+    email: string;
     username: string;
     role: "user" | "seller";
     expired: Date;
     created_at: Date;
-}
+};
 
 export type monitoring = {
     id: string;
@@ -37,4 +37,10 @@ export type userRegisterValue = {
     username: string;
     role: "user" | "seller";
     image: string;
+};
+
+export type refresh_token_create = {
+    user_id: string;
+    expired: Date;
+    created_at: Date;
 };
