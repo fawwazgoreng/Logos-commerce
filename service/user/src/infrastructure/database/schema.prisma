@@ -14,7 +14,7 @@ model User {
     roles             String
     password          String
     image             String
-    verify            Boolean
+    is_verify            Boolean
     verify_at         DateTime?
     refreshTokens     refresh_token[]
     userAudits        user_audit[]

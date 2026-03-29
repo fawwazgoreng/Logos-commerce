@@ -5,7 +5,6 @@ const envSchema = z.object({
   SECRET_KEY: z.string().min(8, "Secret key terlalu pendek!"),
   DATABASE_URL: z.url("Format DATABASE_URL tidak valid"),
 
-  // SMTP Config
   SMTP_HOST: z.string().default("smtp.gmail.com"),
   SMTP_PORT: z.string().transform((val) => parseInt(val, 10)),
   SMTP_USER: z.email("SMTP_USER harus berupa email valid"),

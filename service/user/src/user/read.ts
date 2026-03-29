@@ -4,6 +4,8 @@ import { UserValidate } from "./validate"
 import UserModel from "./model";
 import { encrypToken } from "../utils/encrypToken";
 import RefreshTokenModel from "./refresh.model";
+import { Context } from "hono";
+import { getCookie } from "hono/cookie";
 
 export default class UserRead {
     constructor(private validate =  new UserValidate(), private userModel = new UserModel() , private refreshTokenModel = new RefreshTokenModel()) {}
@@ -46,6 +48,17 @@ export default class UserRead {
                     error: error.cause || error.issues
                 }
             }
+            throw {
+                status: error.status || 500,
+                message: error.message || "internal server error",
+                error: error.error || "internal server error"
+            }
+        }
+    }
+    refresh = async (c : Context) => {
+        try {
+            const rawCookie = getCookie("refresh_token");
+        } catch (error : any) {
             throw {
                 status: error.status || 500,
                 message: error.message || "internal server error",

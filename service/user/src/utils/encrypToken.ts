@@ -1,11 +1,11 @@
-import { secret_key } from "../config";
 import { nanoid } from "nanoid";
+import { env } from "../config";
 
 const encode = (req: string) => new TextEncoder().encode(req);
 const decode = (req: Buffer) => new TextDecoder().decode(req);
 
 const getKey = async () => {
-    const raw = encode(secret_key);
+    const raw = encode(env.SECRET_KEY);
     const key = await crypto.subtle.digest("SHA-256", raw);
     return await crypto.subtle.importKey(
         "raw",key,"AES-GCM",false , ["encrypt" , "decrypt"]

@@ -50,7 +50,8 @@ export default class UserModel {
                     username: req.username,
                     password: req.password,
                     image: req.image,
-                    roles: req.role
+                    roles: req.role,
+                    is_verify: false
                } 
             });
             return user;

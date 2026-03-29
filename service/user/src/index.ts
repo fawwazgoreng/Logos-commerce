@@ -65,6 +65,14 @@ auth.post("/login", async (c) => {
     }
 });
 
+auth.get("/refresh", async (c) => {
+    try {
+        
+    } catch (errror) {
+        
+    }
+})
+
 auth.use('/', async (c , next) => {
     try {
         const token = c.req.header("Authorization");
