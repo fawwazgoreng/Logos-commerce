@@ -39,8 +39,15 @@ export type userRegisterValue = {
     image: string;
 };
 
-export type refresh_token_create = {
+export type refreshTokenCreate = {
     user_id: string;
     expired: Date;
     created_at: Date;
 };
+
+export type refreshToken = {
+    id: string,
+    role: "seller" | "user",
+    created_at: Date,
+    expired: Date
+} 

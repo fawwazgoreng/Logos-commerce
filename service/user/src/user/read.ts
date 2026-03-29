@@ -1,8 +1,8 @@
 import { ZodError } from "zod";
-import { monitoring, refresh_token_create, userLogin, userToken } from "../userTypes"
+import { monitoring, refreshToken, refreshTokenCreate, userLogin, userToken } from "../userTypes"
 import { UserValidate } from "./validate"
 import UserModel from "./model";
-import { encrypToken } from "../utils/encrypToken";
+import { decrypToken, encrypToken } from "../utils/encrypToken";
 import RefreshTokenModel from "./refresh.model";
 import { Context } from "hono";
 import { getCookie } from "hono/cookie";
@@ -22,11 +22,10 @@ export default class UserRead {
                 email: user.email,
                 created_at: now,
             }
-            const refreshTokenPayload: refresh_token_create = {
+            const refreshTokenPayload: refreshTokenCreate = {
                 user_id: user.id,
                 expired,
                 created_at: now
-                
             }
             const refresh_token = await this.refreshTokenModel.create(refreshTokenPayload);
             const refresh_token_raw = {
@@ -57,7 +56,24 @@ export default class UserRead {
     }
     refresh = async (c : Context) => {
         try {
-            const rawCookie = getCookie("refresh_token");
+            const rawCookie = getCookie(c, "refresh_token");
+            if (!rawCookie) {
+                throw {
+                    status: 401,
+                    message: "unauthorized"
+                }
+            }
+            const decriptToken = await decrypToken(rawCookie as string);
+            const refreshToken = JSON.parse(decriptToken) as refreshToken;
+            const user = await this.userModel.refresh(refreshToken.id);
+            const res = {
+                id: user.id,
+                username: user.username,
+                role: user.roles as "seller" || "user",
+                email: user.email,
+                created_at: new Date(),
+            }
+            return res;
         } catch (error : any) {
             throw {
                 status: error.status || 500,

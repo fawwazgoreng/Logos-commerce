@@ -75,4 +75,45 @@ export default class UserModel {
             }
         }
     }
+    refresh = async (user_id : string) => {
+        try {
+            const user = await prisma?.user.findFirst({
+                where: {
+                    id: user_id
+                },
+                select: {
+                    id: true,
+                    roles: true,
+                    email: true,
+                    username: true,
+                    password: true
+                }
+            });
+            if (!user?.id) {
+                throw {
+                    status: 404,
+                    message: "user data not found"
+                }
+            }
+            return user;
+        } catch (error : any) {
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == "P2025") {
+                    throw {
+                        status: 404,
+                        message: "username or password wrong"
+                    }
+                }
+                throw {
+                    status: 400,
+                    message: error.message,
+                    error: error.code + ` ${error.cause}`
+                }
+            }
+            throw {
+                status: 500,
+                message: "internal server error"
+            }
+        }
+    }
 }

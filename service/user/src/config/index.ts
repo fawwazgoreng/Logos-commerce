@@ -3,7 +3,8 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   SECRET_KEY: z.string().min(8, "Secret key terlalu pendek!"),
-  DATABASE_URL: z.url("Format DATABASE_URL tidak valid"),
+    DATABASE_URL: z.url("Format DATABASE_URL tidak valid"),
+  FRONT_URL: z.url("Format FRONT_URL tidak valid"),
 
   SMTP_HOST: z.string().default("smtp.gmail.com"),
   SMTP_PORT: z.string().transform((val) => parseInt(val, 10)),
