@@ -49,11 +49,23 @@ export default class UserModel {
                     email: req.email,
                     username: req.username,
                     password: req.password,
-                    image: req.image,
+                    image: "",
                     roles: req.role,
                     is_verify: false
-               } 
+                },
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    roles: true
+                }
             });
+            if (!user?.id) {
+                throw {
+                    status: 400,
+                    message: "failed create user"
+                }
+            }
             return user;
         } catch (error : any) {
             if (error instanceof PrismaClientKnownRequestError) {

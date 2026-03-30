@@ -1,5 +1,5 @@
 import z from "zod"
-import { userLogin, userRegister } from "../userTypes";
+import { userLogin, userRegisterValue } from "../userTypes";
 
 const loginValidate = z.object({
     email: z.email().min(6).max(150).lowercase(),
@@ -11,8 +11,7 @@ const loginValidate = z.object({
 const registerValidate = z.object({
     email: z.email().min(6).max(150).lowercase(),
     username: z.string().min(6).max(100),
-    image: z.file().mime(["image/jpeg", "image/png", "image/webp"]).max(200000),
-    role: z.enum(['user' , 'seller' , 'admin']),
+    role: z.enum(['user' , 'seller']),
     password: z.string().min(6).max(100)
         .regex(/[A-Z][a-z]/ , {error: "password must contain one uppercase and lowercase"})
         .regex(/[0-9`~<>?,./!@#$%^&*()_|+\-=\\{}\\[\\];:\\'"]/ , {error: "password must contain unique character"})
@@ -22,7 +21,7 @@ export class UserValidate {
     login = (req : userLogin) => {
         return loginValidate.parse(req);
     }
-    register = (req : userRegister) => {
+    register = (req : userRegisterValue) => {
         return registerValidate.parse(req);
     }
 }

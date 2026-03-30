@@ -3,14 +3,6 @@ export type userLogin = {
     password: string;
 };
 
-export type userRegister = {
-    email: string;
-    password: string;
-    username: string;
-    role: "user" | "seller";
-    image: File;
-};
-
 export type userToken = {
     id: string;
     email: string;
@@ -36,7 +28,6 @@ export type userRegisterValue = {
     password: string;
     username: string;
     role: "user" | "seller";
-    image: string;
 };
 
 export type refreshTokenCreate = {

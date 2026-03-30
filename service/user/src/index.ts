@@ -12,11 +12,15 @@ import { HTTPException } from "hono/http-exception";
 import prisma from "./infrastructure/database/prisma";
 import UserRead from "./user/read";
 import { userToken } from "./userTypes";
+import UserWrite from "./user/write";
 import { signedJwt, verifyJwt } from "./utils/jwtToken";
 import { env } from "./config";
+import { issueVerificationCode } from "./email/emailCode";
+import { sendEmail } from "./email/sendEmail";
 
 const app = new Hono();
 const userRead = new UserRead();
+const userWrite = new UserWrite();
 const auth = app.basePath("/auth");
 
 /** Token Life Cycles */
@@ -132,6 +136,36 @@ auth.get("/refresh", async (c) => {
         throw buildAppError(error);
     }
 });
+
+auth.post("/register", async (c) => {
+    try {
+        const request = await c.req.json();
+        const user = await userWrite.register(request);
+        const codeVerification = await issueVerificationCode(user.id);
+        await sendEmail(user.email, codeVerification);
+        c.status(201);
+        return c.json({
+            status: 201,
+            message: "success create user, please do next step",
+            user
+        });
+    } catch (error: any) {
+        throw buildAppError(error);
+    }
+});
+
+auth.post("/verify", async (c) => {
+    try {
+        const request = await c.req.json();
+        const validated 
+    } catch (error : any) {
+        throw buildAppError(error);
+    } 
+})
+
+auth.post("/profile", async (c) => {
+    
+})
 
 // --- Auth Middleware ---
 
