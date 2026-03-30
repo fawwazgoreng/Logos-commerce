@@ -1,11 +1,13 @@
 import { Context, Hono } from "hono";
-import { StatusCode } from "hono/utils/http-status";
+import { ContentfulStatusCode, StatusCode } from "hono/utils/http-status";
 import { setCookie, deleteCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
 import { some } from "hono/combine";
 import { rateLimiter } from "hono-rate-limiter";
 import { getConnInfo } from "hono/bun";
+import { prettyJSON } from "hono/pretty-json";
+import { HTTPException } from "hono/http-exception";
 
 import prisma from "./infrastructure/database/prisma";
 import UserRead from "./user/read";
@@ -18,15 +20,26 @@ const userRead = new UserRead();
 const auth = app.basePath("/auth");
 
 /** Token Life Cycles */
-const ACCESS_TOKEN_TTL_MS = 1000 * 60 * 15; 
+const ACCESS_TOKEN_TTL_MS = 1000 * 60 * 15;
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
-/** Standardizes error objects for consistent API responses */
-const buildAppError = (error: any) => ({
-    status: error?.status || 500,
-    message: error?.message || "Internal server error",
-    error: error?.error ?? null,
-});
+/** Standardizes error objects for consistent API responses using HTTPException */
+const buildAppError = (error: any): HTTPException => {
+    const status = (error?.status || 500) as StatusCode;
+    const body = JSON.stringify({
+        status,
+        message: error?.message || "Internal server error",
+        error:   error?.error   ?? null,
+    });
+
+    return new HTTPException(status as ContentfulStatusCode, {
+        message: error?.message || "Internal server error",
+        res: new Response(body, {
+            status,
+            headers: { "Content-Type": "application/json" },
+        }),
+    });
+};
 
 /** Creates a signed Access Token (JWT) with user payload */
 const buildAccessToken = (user: any) => {
@@ -39,27 +52,35 @@ const buildAccessToken = (user: any) => {
 
 // --- Global Middlewares ---
 
+app.use("*", prettyJSON());
+
 /** Security: CSRF and CORS configuration */
-app.use("*", some(
-    csrf({ origin: env.FRONT_URL }),
-    cors({
-        origin: env.FRONT_URL,
-        allowHeaders: ['Content-Type', 'Authorization', 'x-forwarded-for'],
-        allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-        credentials: true,
-        maxAge: 600,
-    })
-));
+app.use(
+    "*",
+    some(
+        csrf({ origin: env.FRONT_URL }),
+        cors({
+            origin: env.FRONT_URL,
+            allowHeaders: ["Content-Type", "Authorization", "x-forwarded-for"],
+            allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+            credentials: true,
+            maxAge: 600,
+        }),
+    ),
+);
 
 /** Traffic Control: Rate limiting based on IP Address */
-app.use(rateLimiter({
-    windowMs: 15 * 60 * 1000,
-    limit: 100,
-    keyGenerator: (c : Context) : string | Promise<string> => 
-        c.req.header("x-forwarded-for") ?? 
-        c.req.header("cf-connecting-ip") ?? 
-        getConnInfo(c).remote.address ?? "anonymous"
-}));
+app.use(
+    rateLimiter({
+        windowMs: 15 * 60 * 1000,
+        limit: 100,
+        keyGenerator: (c: Context): string | Promise<string> =>
+            c.req.header("x-forwarded-for") ??
+            c.req.header("cf-connecting-ip") ??
+            getConnInfo(c).remote.address ??
+            "anonymous",
+    }),
+);
 
 // --- Public Routes ---
 
@@ -72,7 +93,11 @@ auth.get("/health", async (c) => {
         await prisma.$queryRaw`SELECT 1`;
         return c.json({ status: 200, message: "Server healthy" });
     } catch (error: any) {
-        throw { status: 503, message: "Database connection failed", error: error?.message ?? null };
+        throw buildAppError({
+            status: 503,
+            message: "Database connection failed",
+            error: error?.message ?? null,
+        });
     }
 });
 
@@ -84,7 +109,10 @@ auth.post("/login", async (c) => {
         const access_token = buildAccessToken(user);
 
         setCookie(c, "refresh-token", refreshToken, {
-            httpOnly: true, secure: true, sameSite: "Strict", path: "/",
+            httpOnly: true,
+            secure: true,
+            sameSite: "Strict",
+            path: "/",
             expires: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
         });
 
@@ -114,7 +142,11 @@ auth.use("*", async (c, next) => {
         await verifyJwt(authHeader);
         await next();
     } catch (error: any) {
-        throw { status: error?.status || 401, message: error?.message || "Unauthorized", error: error?.error ?? null };
+        throw buildAppError({
+            status:  error?.status  || 401,
+            message: error?.message || "Unauthorized",
+            error:   error?.error   ?? null,
+        });
     }
 });
 
@@ -130,12 +162,47 @@ auth.delete("/logout", async (c) => {
     }
 });
 
-/** Global Error Handler for Hono application */
-app.onError((error: any, c: Context) => {
-    const res = buildAppError(error);
-    c.status(res.status as StatusCode);
-    return c.json(res);
+// --- Global Error Handler ---
+
+/** Centralized error handler — catches all thrown exceptions */
+app.onError(async (error: any, c) => {
+    const status = (
+        error instanceof HTTPException ? error.status : (error?.status || 500)
+    ) as StatusCode;
+
+    /** Ensure CORS headers are present even in error responses */
+    c.res.headers.set("Access-Control-Allow-Origin", env.FRONT_URL ?? "https://localhost:3000");
+    c.res.headers.set("Access-Control-Allow-Credentials", "true");
+
+    c.status(status);
+
+    /** Extract JSON body from HTTPException (via buildAppError) or fallback to generic */
+    if (error instanceof HTTPException) {
+        const res = error.getResponse();
+        const body = await res.clone().json().catch(() => ({
+            status,
+            message: error.message || "Internal server error",
+            error: null,
+        }));
+        return c.json(body);
+    }
+
+    /** Fallback response for errors that bypassed buildAppError */
+    return c.json({
+        status,
+        message: error?.message || "Internal server error",
+        error:   error?.error   || (status === 500 ? "Check server logs" : null),
+    });
 });
+
+/** Standardized 404 handler for unmatched routes */
+app.notFound((c) =>
+    c.json({
+        status: 404,
+        message: `Route not found: ${c.req.method} ${c.req.path}`,
+        error: null,
+    }, 404)
+);
 
 app.route("/", auth);
 
