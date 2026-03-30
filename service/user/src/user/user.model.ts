@@ -1,5 +1,5 @@
 import { PrismaClientKnownRequestError } from "../infrastructure/database/generated/prisma/runtime/client"
-import { userLogin, userRegisterValue } from "../userTypes"
+import { userLogin, userRegisterValue } from "../type/userTypes"
 import { checkPassword } from "../utils/hashPasword";
 
 export default class UserModel {

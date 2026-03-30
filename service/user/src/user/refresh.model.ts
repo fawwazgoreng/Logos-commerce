@@ -1,8 +1,8 @@
 import { PrismaClientKnownRequestError } from "../infrastructure/database/generated/prisma/runtime/client";
-import { refresh_token_create } from "../userTypes";
+import { refreshTokenCreate } from "../type/userTypes";
 
 export default class RefreshTokenModel {
-    create = async (req: refresh_token_create) => {
+    create = async (req: refreshTokenCreate) => {
         try {
             const refreshToken = await prisma?.refresh_token.create({
                 data: req,

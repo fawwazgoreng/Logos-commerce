@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
-import { userRegisterValue } from "../userTypes";
-import { UserValidate } from "./validate";
-import UserModel from "./model";
+import { userRegisterValue } from "../type/userTypes";
+import { UserValidate } from "./user.validate";
+import UserModel from "./user.model";
 import { hashingPassword } from "../utils/hashPasword";
 
 export default class UserWrite {

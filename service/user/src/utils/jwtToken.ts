@@ -1,5 +1,5 @@
 import { sign, verify} from "hono/jwt";
-import { userToken } from "../userTypes";
+import { userToken } from "../type/userTypes";
 import { env } from "../config";
 
 export const signedJwt = async (req : userToken) => {

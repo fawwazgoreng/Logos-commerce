@@ -10,17 +10,20 @@ import { prettyJSON } from "hono/pretty-json";
 import { HTTPException } from "hono/http-exception";
 
 import prisma from "./infrastructure/database/prisma";
-import UserRead from "./user/read";
-import { userToken } from "./userTypes";
-import UserWrite from "./user/write";
+import UserRead from "./user/user.read";
+import { userToken } from "./type/userTypes";
+import UserWrite from "./user/user.write";
 import { signedJwt, verifyJwt } from "./utils/jwtToken";
 import { env } from "./config";
-import { issueVerificationCode } from "./email/emailCode";
-import { sendEmail } from "./email/sendEmail";
+import EmailRead from "./email/email.read.";
+import { sendEmail } from "./utils/emailHelper";
+import EmailWrite from "./email/email.write";
 
 const app = new Hono();
 const userRead = new UserRead();
 const userWrite = new UserWrite();
+const emailRead = new EmailRead();
+const emailWrite = new EmailWrite();
 const auth = app.basePath("/auth");
 
 /** Token Life Cycles */
@@ -141,12 +144,11 @@ auth.post("/register", async (c) => {
     try {
         const request = await c.req.json();
         const user = await userWrite.register(request);
-        const codeVerification = await issueVerificationCode(user.id);
-        await sendEmail(user.email, codeVerification);
+        await emailWrite.create(user.id , user.email);
         c.status(201);
         return c.json({
             status: 201,
-            message: "success create user, please do next step",
+            message: "success create user, please verify your account",
             user
         });
     } catch (error: any) {
@@ -157,7 +159,12 @@ auth.post("/register", async (c) => {
 auth.post("/verify", async (c) => {
     try {
         const request = await c.req.json();
-        const validated 
+        await emailRead.verify(request);
+        c.status(200);
+        return c.json({
+            status: 200,
+            message: "success verify email account"
+        })
     } catch (error : any) {
         throw buildAppError(error);
     } 
