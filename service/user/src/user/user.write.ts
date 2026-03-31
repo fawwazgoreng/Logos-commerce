@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { userRegisterValue } from "../type/userTypes";
+import { createPhotoProfile, userRegisterValue } from "../type/userTypes";
 import { UserValidate } from "./user.validate";
 import UserModel from "./user.model";
 import { hashingPassword } from "../utils/hashPasword";
@@ -34,6 +34,35 @@ export default class UserWrite {
             };
         }
     };
-    uploadPhotoProfile = async () => {};
+    verify = async (id: string) => {
+        try {
+            await this.userModel.verified(id);
+        } catch (error: any) {
+            throw {
+                status: error.status || 500,
+                message: error.message || "internal server error",
+                error: error.error || "internal server error",
+            };
+        }
+    };
+    uploadPhotoProfile = async (req: createPhotoProfile) => {
+        try {
+            const validated = this.userValidate.uploadImage(req);
+            const imageUrl = ;
+        } catch (error : any) {
+            if (error instanceof ZodError) {
+                throw {
+                    status: 422,
+                    message: error.issues[0].message,
+                    error: error.cause,
+                };
+            }
+            throw {
+                status: error.status || 500,
+                message: error.message || "internal server error",
+                error: error.error || "internal server error",
+            };
+        }
+    };
     deletePhotoProfile = async () => {};
 }

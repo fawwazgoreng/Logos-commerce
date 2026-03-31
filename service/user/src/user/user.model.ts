@@ -128,4 +128,41 @@ export default class UserModel {
             }
         }
     }
+    verified = async(id: string) => {
+        try {
+            const user = await prisma?.user.update({
+                where: {
+                    id
+                },
+                data: {
+                    is_verify: true,
+                    verify_at: new Date()
+                }
+            });
+            if (!user) {
+                throw {
+                    status: 404,
+                    message: "failed verify email"
+                }
+            }
+        } catch (error) {
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == "P2025") {
+                    throw {
+                        status: 404,
+                        message: "username or password wrong"
+                    }
+                }
+                throw {
+                    status: 400,
+                    message: error.message,
+                    error: error.code + ` ${error.cause}`
+                }
+            }
+            throw {
+                status: 500,
+                message: "internal server error"
+            }
+        }
+    }
 }

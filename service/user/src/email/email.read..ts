@@ -15,7 +15,7 @@ export default class EmailRead {
             const record = await this.emailModel.verify(validated.user_id);
             
             /** Check if the verification code has already expired */
-            if (!record || new Date() > record.expired) {
+            if (!record || !record.user.id || new Date() > record.expired) {
                 throw { status: 400, message: "Verification code has expired" };
             }
 
@@ -28,7 +28,7 @@ export default class EmailRead {
             /** Delete the code after successful use to prevent reuse */
             await this.emailModel.delete(record.id);
 
-            return { status: 200, message: "Email verified successfully" };
+            return record.user.id;
         } catch (error: any) {
             this.handleError(error);
         }

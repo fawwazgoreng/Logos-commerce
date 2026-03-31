@@ -1,5 +1,5 @@
 import z from "zod"
-import { userLogin, userRegisterValue } from "../type/userTypes";
+import { createPhotoProfile, userLogin, userRegisterValue } from "../type/userTypes";
 
 const loginValidate = z.object({
     email: z.email().min(6).max(150).lowercase(),
@@ -17,11 +17,19 @@ const registerValidate = z.object({
         .regex(/[0-9`~<>?,./!@#$%^&*()_|+\-=\\{}\\[\\];:\\'"]/ , {error: "password must contain unique character"})
 })
 
+const createImage = z.object({
+    user_id: z.string().min(36),
+    image: z.file().mime(["image/png","image/jpeg","image/webp"]).max(200000)
+})
+
 export class UserValidate {
     login = (req : userLogin) => {
         return loginValidate.parse(req);
     }
     register = (req : userRegisterValue) => {
         return registerValidate.parse(req);
+    }
+    uploadImage = (req: createPhotoProfile) => {
+        return createImage.parse(req);
     }
 }

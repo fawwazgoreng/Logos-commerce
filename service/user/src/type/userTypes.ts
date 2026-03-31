@@ -42,3 +42,9 @@ export type refreshToken = {
     created_at: Date,
     expired: Date
 } 
+
+
+export type createPhotoProfile = {
+    user_id: string,
+    image: File
+}

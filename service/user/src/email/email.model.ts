@@ -18,7 +18,12 @@ export default class EmailModel {
             const record = await prisma.code_verification.findFirst({
                 where: { user_id },
                 orderBy: { created_at: "desc" },
-                select: { id: true, code: true, expired: true },
+                select: {
+                    id: true, code: true, expired: true, user: {
+                        select: {
+                            id: true
+                        }
+                } },
             });
             return record;
         } catch (error: any) {

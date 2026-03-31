@@ -11,7 +11,7 @@ import { HTTPException } from "hono/http-exception";
 
 import prisma from "./infrastructure/database/prisma";
 import UserRead from "./user/user.read";
-import { userToken } from "./type/userTypes";
+import { createPhotoProfile, userToken } from "./type/userTypes";
 import UserWrite from "./user/user.write";
 import { signedJwt, verifyJwt } from "./utils/jwtToken";
 import { env } from "./config";
@@ -159,7 +159,8 @@ auth.post("/register", async (c) => {
 auth.post("/verify", async (c) => {
     try {
         const request = await c.req.json();
-        await emailRead.verify(request);
+        const userId = await emailRead.verify(request);
+        await userWrite.verify(String(userId));
         c.status(200);
         return c.json({
             status: 200,
@@ -171,7 +172,16 @@ auth.post("/verify", async (c) => {
 })
 
 auth.post("/profile", async (c) => {
-    
+    try {
+        const request = await c.req.parseBody({ all: true });
+        const payload: createPhotoProfile= {
+            user_id: String(request["user_id"] || ""),
+            image: request["image"] as File
+        };
+        const photoProfile = await userWrite.uploadPhotoProfile(payload);
+    } catch (error) {
+        throw buildAppError(error);
+    }
 })
 
 // --- Auth Middleware ---
