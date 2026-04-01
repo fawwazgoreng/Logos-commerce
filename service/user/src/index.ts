@@ -179,6 +179,43 @@ auth.post("/profile", async (c) => {
             image: request["image"] as File
         };
         const photoProfile = await userWrite.uploadPhotoProfile(payload);
+        c.status(201);
+        return c.json({
+            status: 201,
+            message: "success add profile",
+            url: photoProfile
+        })
+    } catch (error) {
+        throw buildAppError(error);
+    }
+}).put("/profile", async (c) => {
+    try {
+        const request = await c.req.parseBody({ all: true });
+        const payload: createPhotoProfile= {
+            user_id: String(request["user_id"] || ""),
+            image: request["image"] as File
+        };
+        const photoProfile = await userWrite.editPhotoProfile(payload);
+        c.status(200);
+        return c.json({
+            status: 201,
+            message: "success edit profile",
+            url: photoProfile
+        })
+    } catch (error) {
+        throw buildAppError(error);
+    }
+}).delete("/profile", async (c) => {
+    try {
+        const request = await c.req.parseBody({ all: true });
+        const user_id = String(request["user_id"] || "");
+        const photoProfile = await userWrite.deletePhotoProfile(user_id);
+        c.status(200);
+        return c.json({
+            status: 201,
+            message: "success delete profile",
+            url: photoProfile
+        })
     } catch (error) {
         throw buildAppError(error);
     }
