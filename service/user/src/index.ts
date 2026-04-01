@@ -1,5 +1,5 @@
 import { Context, Hono } from "hono";
-import { ContentfulStatusCode, StatusCode } from "hono/utils/http-status";
+import { StatusCode } from "hono/utils/http-status";
 import { setCookie, deleteCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
@@ -16,8 +16,8 @@ import UserWrite from "./user/user.write";
 import { signedJwt, verifyJwt } from "./utils/jwtToken";
 import { env } from "./config";
 import EmailRead from "./email/email.read.";
-import { sendEmail } from "./utils/emailHelper";
 import EmailWrite from "./email/email.write";
+import { toHttpError } from "./utils/error/separate";
 
 const app = new Hono();
 const userRead = new UserRead();
@@ -30,23 +30,6 @@ const auth = app.basePath("/auth");
 const ACCESS_TOKEN_TTL_MS = 1000 * 60 * 15;
 const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
-/** Standardizes error objects for consistent API responses using HTTPException */
-const buildAppError = (error: any): HTTPException => {
-    const status = (error?.status || 500) as StatusCode;
-    const body = JSON.stringify({
-        status,
-        message: error?.message || "Internal server error",
-        error:   error?.error   ?? null,
-    });
-
-    return new HTTPException(status as ContentfulStatusCode, {
-        message: error?.message || "Internal server error",
-        res: new Response(body, {
-            status,
-            headers: { "Content-Type": "application/json" },
-        }),
-    });
-};
 
 /** Creates a signed Access Token (JWT) with user payload */
 const buildAccessToken = (user: any) => {
@@ -56,6 +39,8 @@ const buildAccessToken = (user: any) => {
     };
     return signedJwt(payload);
 };
+
+/** Standardizes error objects for consistent API responses using HTTPException */
 
 // --- Global Middlewares ---
 
@@ -100,7 +85,7 @@ auth.get("/health", async (c) => {
         await prisma.$queryRaw`SELECT 1`;
         return c.json({ status: 200, message: "Server healthy" });
     } catch (error: any) {
-        throw buildAppError({
+        throw toHttpError({
             status: 503,
             message: "Database connection failed",
             error: error?.message ?? null,
@@ -125,7 +110,7 @@ auth.post("/login", async (c) => {
 
         return c.json({ status: 200, message: "Login successful", access_token });
     } catch (error: any) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     }
 });
 
@@ -136,7 +121,7 @@ auth.get("/refresh", async (c) => {
         const access_token = buildAccessToken(user);
         return c.json({ status: 200, message: "Token refreshed successfully", access_token });
     } catch (error: any) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     }
 });
 
@@ -152,7 +137,7 @@ auth.post("/register", async (c) => {
             user
         });
     } catch (error: any) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     }
 });
 
@@ -167,7 +152,7 @@ auth.post("/verify", async (c) => {
             message: "success verify email account"
         })
     } catch (error : any) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     } 
 })
 
@@ -186,7 +171,7 @@ auth.post("/profile", async (c) => {
             url: photoProfile
         })
     } catch (error) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     }
 }).put("/profile", async (c) => {
     try {
@@ -203,7 +188,7 @@ auth.post("/profile", async (c) => {
             url: photoProfile
         })
     } catch (error) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     }
 }).delete("/profile", async (c) => {
     try {
@@ -217,7 +202,7 @@ auth.post("/profile", async (c) => {
             url: photoProfile
         })
     } catch (error) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     }
 })
 
@@ -230,7 +215,7 @@ auth.use("*", async (c, next) => {
         await verifyJwt(authHeader);
         await next();
     } catch (error: any) {
-        throw buildAppError({
+        throw toHttpError({
             status:  error?.status  || 401,
             message: error?.message || "Unauthorized",
             error:   error?.error   ?? null,
@@ -246,7 +231,7 @@ auth.delete("/logout", async (c) => {
         deleteCookie(c, "refresh-token");
         return c.json({ status: 200, message: "Logout successful" });
     } catch (error: any) {
-        throw buildAppError(error);
+        throw toHttpError(error);
     }
 });
 
@@ -264,7 +249,7 @@ app.onError(async (error: any, c) => {
 
     c.status(status);
 
-    /** Extract JSON body from HTTPException (via buildAppError) or fallback to generic */
+    /** Extract JSON body from HTTPException (via Error) or fallback to generic */
     if (error instanceof HTTPException) {
         const res = error.getResponse();
         const body = await res.clone().json().catch(() => ({
@@ -275,7 +260,7 @@ app.onError(async (error: any, c) => {
         return c.json(body);
     }
 
-    /** Fallback response for errors that bypassed buildAppError */
+    /** Fallback response for errors that bypassed Error */
     return c.json({
         status,
         message: error?.message || "Internal server error",

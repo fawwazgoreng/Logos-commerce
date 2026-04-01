@@ -8,7 +8,8 @@ export default class EmailModel {
         try {
             return await prisma.code_verification.create({ data: req });
         } catch (error: any) {
-            this.handlePrismaError(error);
+            // Re-throw the error processed by the handler
+            throw this.handlePrismaError(error);
         }
     };
 
@@ -19,15 +20,17 @@ export default class EmailModel {
                 where: { user_id },
                 orderBy: { created_at: "desc" },
                 select: {
-                    id: true, code: true, expired: true, user: {
-                        select: {
-                            id: true
-                        }
-                } },
+                    id: true, 
+                    code: true, 
+                    expired: true, 
+                    user: { select: { id: true } } 
+                },
             });
+            
+            if (!record) throw { status: 404, message: "Verification code not found" };
             return record;
         } catch (error: any) {
-            this.handlePrismaError(error);
+            throw this.handlePrismaError(error, "Verification code not found");
         }
     };
 
@@ -36,28 +39,24 @@ export default class EmailModel {
         try {
             await prisma.code_verification.delete({ where: { id } });
         } catch (error: any) {
-            this.handlePrismaError(
-                error,
-                "Record not found or already deleted",
-            );
+            throw this.handlePrismaError(error, "Record not found or already deleted");
         }
     };
 
     /** Centralized helper to map Prisma errors to HTTP exceptions */
-    private handlePrismaError(
-        error: any,
-        notFoundMsg: string = "Record not found",
-    ) {
+    private handlePrismaError(error: any, notFoundMsg: string = "Record not found") {
         if (error instanceof PrismaClientKnownRequestError) {
             const isNotFound = error.code === "P2025";
-            throw {
+            return {
                 status: isNotFound ? 404 : 400,
                 message: isNotFound ? notFoundMsg : error.message,
                 error: `${error.code} ${error.cause ?? ""}`,
             };
         }
-        throw error.status
+
+        // Return current error if it has a status, otherwise return 500
+        return error.status
             ? error
-            : { status: 500, message: "Internal server error" };
+            : { status: 500, message: "Internal server error", error: error.message };
     }
 }
