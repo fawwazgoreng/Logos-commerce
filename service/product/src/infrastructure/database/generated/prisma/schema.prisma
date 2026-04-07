@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+
+  @@map("categories")
+}
+
+model Product {
+  id         String   @id @default(uuid())
+  storeId    String
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  name        String
+  slug        String @unique
+  description String @db.Text
+  price       Int
+  stock       Int    @default(0)
+
+  mainImage String?
+  images    Json?
+
+  isActive Boolean @default(true)
+  version  Int     @default(0)
+
+  auditLogs ProductAuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductAuditLog {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  action    String
+  oldValue  Json?
+  newValue  Json?
+  changedBy String
+
+  createdAt DateTime @default(now())
+
+  @@map("product_audit_logs")
+}
