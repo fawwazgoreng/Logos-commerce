@@ -1,100 +1,108 @@
-import { ZodError } from "zod";
 import { createPhotoProfile, userRegisterValue } from "../type/userTypes";
 import { UserValidate } from "./user.validate";
 import UserModel from "./user.model";
-import { hashingPassword } from "../utils/hashPasword";
-import ImageHelper from "../utils/image";
+import { hashingPassword } from "../utils/auth/hashPasword";
+import ImageHelper from "../utils/etc/image";
+import { AppError } from "../utils/error";
 
 export default class UserWrite {
     constructor(
         private userValidate = new UserValidate(),
         private userModel = new UserModel(),
-        private imageHelp = new ImageHelper("profile") 
+        private imageHelp = new ImageHelper("profile"),
     ) {}
 
-    // Register a new user with hashed password
+    // REGISTER
     register = async (req: userRegisterValue) => {
-        try {
-            const validated = this.userValidate.register(req);
-            const hashedPassword = await hashingPassword(validated.password);
-            
-            const payload: userRegisterValue = {
-                ...validated,
-                password: hashedPassword,
-            };
-            
-            return await this.userModel.register(payload);
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    };
+        // 1. validate
+        const validated = this.userValidate.register(req);
 
-    // Update user verification status
-    verify = async (id: string) => {
-        try {
-            return await this.userModel.verified(id);
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    };
+        // 2. hash password
+        const hashedPassword = await hashingPassword(validated.password);
 
-    // Upload and link a new profile photo
-    uploadPhotoProfile = async (req: createPhotoProfile) => {
-        try {
-            const validated = this.userValidate.uploadImage(req);
-            const url = await this.imageHelp.save(validated.image);
-            
-            return await this.userModel.editProfile({
-                image: url,
-                id: req.user_id
-            });
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    };
-
-    // Replace existing profile photo with a new one
-    editPhotoProfile = async (req: createPhotoProfile) => {
-        try {
-            const validated = this.userValidate.uploadImage(req);
-            const oldUrl = await this.userModel.getProfile(req.user_id) ?? "";
-            
-            // ImageHelper.edit handles deletion of the old file
-            const newUrl = await this.imageHelp.edit(oldUrl, validated.image);
-            
-            return await this.userModel.editProfile({
-                image: newUrl,
-                id: req.user_id,
-                path: oldUrl
-            });
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
-
-    // Remove profile photo from storage and database
-    deletePhotoProfile = async (user_id: string) => {
-        try {
-            const url = await this.userModel.deleteProfile(user_id); 
-            return this.imageHelp.delete(url);
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    };
-
-    // Centralized error mapping for Zod and internal errors
-    private handleError(error: any) {
-        if (error instanceof ZodError) {
-            return {
-                status: 422,
-                message: error.issues[0].message,
-                error: error.cause,
-            };
-        }
-        return {
-            status: error.status || 500,
-            message: error.message || "Internal server error",
-            error: error.error || "Internal server error",
+        // 3. create user
+        const payload: userRegisterValue = {
+            ...validated,
+            password: hashedPassword,
         };
-    }
+
+        return this.userModel.create(payload);
+    };
+
+    // VERIFY USER
+    verify = async (id: string) => {
+        const user = await this.userModel.findById(id);
+
+        if (!user) {
+            throw new AppError("User not found", 404, "USER_NOT_FOUND");
+        }
+
+        return this.userModel.verify(id);
+    };
+
+    // UPLOAD PHOTO
+    uploadPhotoProfile = async (req: createPhotoProfile) => {
+        // 1. validate
+        const validated = this.userValidate.uploadImage(req);
+
+        // 2. check user exist
+        const user = await this.userModel.getId(req.user_id);
+        if (!user) {
+            throw new AppError("User not found", 404, "USER_NOT_FOUND");
+        }
+
+        // 3. save image
+        const url = await this.imageHelp.save(validated.image);
+
+        // 4. update DB
+        return this.userModel.updateProfileImage({
+            id: req.user_id,
+            image: url,
+        });
+    };
+
+    // EDIT PHOTO
+    editPhotoProfile = async (req: createPhotoProfile) => {
+        // 1. validate
+        const validated = this.userValidate.uploadImage(req);
+
+        // 2. get current image
+        const current = await this.userModel.getProfileImage(req.user_id);
+
+        if (!current) {
+            throw new AppError("User not found", 404, "USER_NOT_FOUND");
+        }
+
+        const oldUrl = current.image || "";
+
+        // 3. replace image (auto delete old)
+        const newUrl = await this.imageHelp.edit(oldUrl, validated.image);
+
+        // 4. update DB
+        return this.userModel.updateProfileImage({
+            id: req.user_id,
+            image: newUrl,
+            path: oldUrl,
+        });
+    };
+
+    // DELETE PHOTO
+    deletePhotoProfile = async (user_id: string) => {
+        // 1. get current image
+        const current = await this.userModel.getProfileImage(user_id);
+
+        if (!current) {
+            throw new AppError("User not found", 404, "USER_NOT_FOUND");
+        }
+
+        const url = current.image;
+
+        // 2. delete from storage
+        if (url) {
+            this.imageHelp.delete(url);
+        }
+
+        // 3. clear DB
+        return this.userModel.clearProfileImage(user_id);
+    };
 }

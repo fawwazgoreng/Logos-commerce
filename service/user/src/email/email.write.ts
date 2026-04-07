@@ -1,5 +1,4 @@
-import { ZodError } from "zod";
-import { issueVerificationCode, sendEmail } from "../utils/emailHelper";
+import { issueVerificationCode, sendEmail } from "../utils/etc/emailHelper";
 import EmailModel from "./email.model";
 import EmailValidated from "./email.validated";
 
@@ -11,7 +10,6 @@ export default class EmailWrite {
 
     /** Generates a verification code, stores the hash, and sends the raw code via email */
     create = async (user_id: string, email: string) => {
-        try {
             const { rawCode, hashedCode } = await issueVerificationCode(user_id);
 
             /** Prepare verification payload with a 5-minute expiration window */
@@ -36,24 +34,5 @@ export default class EmailWrite {
             await sendEmail(email, rawCode);
 
             return { status: 201, message: "Verification code sent successfully" };
-        } catch (error: any) {
-            this.handleError(error);
-        }
     };
-
-    /** Centralized error mapper for Zod and custom exceptions */
-    private handleError(error: any) {
-        if (error instanceof ZodError) {
-            throw {
-                status: 422,
-                message: error.issues[0].message,
-                error: error.format,
-            };
-        }
-        throw {
-            status: error.status || 500,
-            message: error.message || "Failed to generate verification code",
-            error: error.error || null,
-        };
-    }
 }

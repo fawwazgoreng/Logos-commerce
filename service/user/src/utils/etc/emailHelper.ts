@@ -1,5 +1,5 @@
-import transport from "../config/email";
-import { env } from "../config";
+import transport from "../../config/email";
+import { env } from "../../config";
 
 const handleSmtpError = (error: any) => {
     let message = "Send failed:";

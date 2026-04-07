@@ -2,7 +2,7 @@ import { ZodError } from "zod";
 import { HTTPException } from "hono/http-exception";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 import { PrismaClientKnownRequestError } from "../../infrastructure/database/generated/prisma/runtime/client";
-import { AppError } from "../errorHandling";
+import { AppError } from ".";
 
 export function mapToAppError(error: any): AppError {
   if (error instanceof ZodError) {
@@ -10,7 +10,7 @@ export function mapToAppError(error: any): AppError {
       error.issues[0].message,
       422,
       "VALIDATION_ERROR",
-      error.flatten()
+      error.flatten
     );
   }
 
@@ -50,4 +50,28 @@ export function ErrorHTTPException(error: AppError): HTTPException {
 export function toHttpError(error: unknown) {
   const appError = mapToAppError(error);
   return ErrorHTTPException(appError);
+}
+
+// Centralized error mapping for Zod and internal errors
+export const handleError = (error: any) => {
+    if (error instanceof ZodError) {
+        return {
+            status: 422,
+            message: error.issues[0].message,
+            error: error.cause,
+        };
+    }
+    return {
+        status: error.status || 500,
+        message: error.message || "Internal server error",
+        error: error.error || "Internal server error",
+    };
+};
+
+export const baseHandleError = (error: any) => {
+    return {
+        status: error.status || 500,
+        message: error.message || "Internal server error",
+        error: error.error || "Internal server error",
+    };
 }

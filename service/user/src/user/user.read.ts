@@ -1,92 +1,128 @@
-import { ZodError } from "zod";
-import {  refreshToken, refreshTokenCreate, userLogin } from "../type/userTypes"
-import { UserValidate } from "./user.validate"
+import { userLogin, refreshToken, refreshTokenCreate } from "../type/userTypes";
+import { UserValidate } from "./user.validate";
 import UserModel from "./user.model";
-import { decrypToken, encrypToken } from "../utils/encrypToken";
 import RefreshTokenModel from "./refresh.model";
-import { Context } from "hono";
-import { getCookie } from "hono/cookie";
+import { decrypToken, encrypToken } from "../utils/auth/encrypToken";
+import { checkPassword } from "../utils/auth/hashPasword";
+import { AppError } from "../utils/error";
 
 export default class UserRead {
-    constructor(private validate =  new UserValidate(), private userModel = new UserModel() , private refreshTokenModel = new RefreshTokenModel()) {}
+    constructor(
+        private validate = new UserValidate(),
+        private userModel = new UserModel(),
+        private refreshTokenModel = new RefreshTokenModel(),
+    ) {}
+
+    // LOGIN
     login = async (req: userLogin) => {
-        try {
-            const payload = this.validate.login(req);
-            const user = await this.userModel.login(payload);
-            const now = new Date();
-            const expired = new Date(Date.now() + Date.now() + 1000 * 60 * 60 * 24 * 7);
-            const res = {
-                id: user.id,
-                username: user.username,
-                role: user.roles as "seller" || "user",
-                email: user.email,
-                created_at: now,
-            }
-            const refreshTokenPayload: refreshTokenCreate = {
-                user_id: user.id,
-                expired,
-                created_at: now
-            }
-            const refresh_token = await this.refreshTokenModel.create(refreshTokenPayload);
-            const refresh_token_raw = {
-                id: refresh_token?.id,
-                role: user.roles as "seller" || "user",
-                created_at: now,
-                expired
-            }
-            const token = await encrypToken(JSON.stringify(refresh_token_raw));
-            return {
-                user: res,
-                token
-            };
-        } catch (error : any) {
-            if (error instanceof ZodError) {
-                throw {
-                    status: 422,
-                    message: error.issues[0].message,
-                    error: error.cause || error.issues
-                }
-            }
-            throw {
-                status: error.status || 500,
-                message: error.message || "internal server error",
-                error: error.error || "internal server error"
-            }
+        // 1. validate input
+        const payload = this.validate.login(req);
+
+        // 2. find user
+        const user = await this.userModel.findByEmail(payload.email);
+        if (!user) {
+            throw new AppError(
+                "Invalid credentials",
+                401,
+                "INVALID_CREDENTIALS",
+            );
         }
-    }
-    refresh = async (c : Context) => {
-        try {
-            const rawCookie = getCookie(c, "refresh_token");
-            if (!rawCookie) {
-                throw {
-                    status: 401,
-                    message: "unauthorized"
-                }
-            }
-            const decriptToken = await decrypToken(rawCookie as string);
-            const refreshToken = JSON.parse(decriptToken) as refreshToken;
-            const user = await this.userModel.refresh(refreshToken.id);
-            const res = {
-                id: user.id,
-                username: user.username,
-                role: user.roles as "seller" || "user",
-                email: user.email,
-                created_at: new Date(),
-            }
-            return res;
-        } catch (error : any) {
-            throw {
-                status: error.status || 500,
-                message: error.message || "internal server error",
-                error: error.error || "internal server error"
-            }
+
+        if (!user.is_verify) {
+            throw new AppError(
+                "okease veriy your gmail first",
+                401,
+                "INVALID_CREDENTIALS",
+            );
         }
-    }
-    profile = async () => {
-        try {
-            
-        } catch (error) {
-            
+
+        // 3. check password
+        const isValid = checkPassword({
+            password: payload.password,
+            hashed: user.password,
+        });
+
+        if (!isValid) {
+            throw new AppError(
+                "Invalid credentials",
+                401,
+                "INVALID_CREDENTIALS",
+            );
         }
-    }
+
+        // 4. build response
+        const now = new Date();
+        const expired = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+
+        const userResponse = {
+            id: user.id,
+            username: user.username,
+            role: user.roles as "seller" | "user",
+            email: user.email,
+            created_at: now,
+        };
+
+        // 5. create refresh token (DB)
+        const refreshPayload: refreshTokenCreate = {
+            user_id: user.id,
+            expired,
+            created_at: now,
+        };
+
+        const refreshToken =
+            await this.refreshTokenModel.create(refreshPayload);
+
+        // 6. encrypt refresh token
+        const refreshRaw = {
+            id: refreshToken?.id,
+            role: user.roles as "seller" | "user",
+            created_at: now,
+            expired,
+        };
+
+        const token = await encrypToken(JSON.stringify(refreshRaw));
+
+        return {
+            user: userResponse,
+            token,
+        };
+    };
+
+    // REFRESH TOKEN
+    refresh = async (rawToken?: string) => {
+        if (!rawToken) {
+            throw new AppError("Unauthorized", 401, "UNAUTHORIZED");
+        }
+
+        let parsed: refreshToken;
+
+        // 1. decrypt token
+        try {
+            const decrypted = await decrypToken(rawToken);
+            parsed = JSON.parse(decrypted);
+        } catch {
+            throw new AppError("Invalid token", 401, "INVALID_TOKEN");
+        }
+
+        const existedToken = await this.refreshTokenModel.find("", parsed.id);
+        if (!existedToken) {
+            throw new AppError("Invalid token", 401, "INVALID_TOKEN");
+        }
+
+        // 2. get user
+        const user = await this.userModel.findById(parsed.id);
+
+        if (!user) {
+            throw new AppError("User not found", 404, "USER_NOT_FOUND");
+        }
+
+        // 3. return new payload
+        return {
+            id: user.id,
+            username: user.username,
+            role: user.roles as "seller" | "user",
+            email: user.email,
+            created_at: new Date(),
+        };
+    };
 }

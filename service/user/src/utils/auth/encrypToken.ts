@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { env } from "../config";
+import { env } from "../../config";
 
 const encode = (req: string) => new TextEncoder().encode(req);
 const decode = (req: ArrayBuffer) => new TextDecoder().decode(req);
