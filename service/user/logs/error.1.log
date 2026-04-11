@@ -1,0 +1,11 @@
+{"level":50,"time":"2026-04-11T14:10:41.147Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:11:11.773Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:26:05.751Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:26:10.571Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:28:13.160Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:28:14.157Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:28:21.357Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:28:46.179Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:28:50.368Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:30:14.507Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}
+{"level":50,"time":"2026-04-11T14:30:15.329Z","service":"api-service","runtime":"bun","status":401,"message":"Unauthorized","error":"UNAUTHORIZED","details":null}

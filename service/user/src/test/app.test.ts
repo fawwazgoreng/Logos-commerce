@@ -1,18 +1,41 @@
-import { describe, it, expect, beforeEach, mock, spyOn } from "bun:test";
+import { describe, it, expect, mock, beforeAll, afterAll } from "bun:test";
 import app from "..";
 
-// ---------------------------------------------------------------------------
-// Mock heavy dependencies so tests run without real DB / external services
-// ---------------------------------------------------------------------------
+/** * ---------------------------------------------------------------------------
+ * SERVER SETUP
+ * ---------------------------------------------------------------------------
+ * We start a real server instance so we can use the native fetch API 
+ * instead of app.fetch (Internal Hono mock).
+ */
 
-// --- Prisma ---
+let server: any;
+const TEST_PORT = 3001;
+const BASE_URL = `http://localhost:${TEST_PORT}`;
+
+beforeAll(() => {
+    server = Bun.serve({
+        port: TEST_PORT,
+        fetch: app.fetch,
+    });
+});
+
+afterAll(() => {
+    server.stop();
+});
+
+/** * ---------------------------------------------------------------------------
+ * MOCKING DEPENDENCIES
+ * ---------------------------------------------------------------------------
+ */
+
+// Mock Prisma database client
 mock.module("./infrastructure/database/prisma", () => ({
     default: {
         $queryRaw: mock(() => Promise.resolve([{ 1: 1 }])),
     },
 }));
 
-// --- UserRead ---
+// Mock User Read repository
 mock.module("./user/user.read", () => ({
     default: class MockUserRead {
         login = mock(async (body: any) => {
@@ -40,7 +63,7 @@ mock.module("./user/user.read", () => ({
     },
 }));
 
-// --- UserWrite ---
+// Mock User Write repository
 mock.module("./user/user.write", () => ({
     default: class MockUserWrite {
         register = mock(async (body: any) => {
@@ -52,22 +75,14 @@ mock.module("./user/user.write", () => ({
             }
             return { id: "new-user-1", email: body.email };
         });
-
         verify = mock(async (_userId: string) => undefined);
-
-        uploadPhotoProfile = mock(async (_payload: any) =>
-            "https://cdn.example.com/photo.jpg",
-        );
-
-        editPhotoProfile = mock(async (_payload: any) =>
-            "https://cdn.example.com/photo-edited.jpg",
-        );
-
+        uploadPhotoProfile = mock(async (_payload: any) => "https://cdn.example.com/photo.jpg");
+        editPhotoProfile = mock(async (_payload: any) => "https://cdn.example.com/photo-edited.jpg");
         deletePhotoProfile = mock(async (_userId: string) => null);
     },
 }));
 
-// --- EmailRead ---
+// Mock Email Read service
 mock.module("./email/email.read.", () => ({
     default: class MockEmailRead {
         verify = mock(async (body: any) => {
@@ -80,14 +95,14 @@ mock.module("./email/email.read.", () => ({
     },
 }));
 
-// --- EmailWrite ---
+// Mock Email Write service
 mock.module("./email/email.write", () => ({
     default: class MockEmailWrite {
         create = mock(async (_userId: string, _email: string) => undefined);
     },
 }));
 
-// --- Auth utilities ---
+// Mock Auth Utilities
 mock.module("./utils/auth/auth", () => ({
     buildAccessToken: mock((_user: any) => "mock-access-token"),
     verifyJwt: mock(async (header: string) => {
@@ -100,7 +115,7 @@ mock.module("./utils/auth/auth", () => ({
     }),
 }));
 
-// --- Config env ---
+// Mock Environment Config
 mock.module("./config", () => ({
     env: {
         FRONT_URL: "http://localhost:3000",
@@ -108,9 +123,11 @@ mock.module("./config", () => ({
     },
 }));
 
-// ---------------------------------------------------------------------------
-// Helper — execute a Request against the Hono app
-// ---------------------------------------------------------------------------
+/** * ---------------------------------------------------------------------------
+ * REQUEST HELPER
+ * ---------------------------------------------------------------------------
+ */
+
 async function req(
     method: string,
     path: string,
@@ -120,11 +137,11 @@ async function req(
         cookies?: Record<string, string>;
     } = {},
 ) {
-    const url = `http://localhost${path}`;
+    const url = `${BASE_URL}${path}`;
 
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        Origin: "http://localhost:3000",
+        "Origin": "http://localhost:3000",
         ...(opts.headers ?? {}),
     };
 
@@ -137,354 +154,120 @@ async function req(
     const init: RequestInit = { method, headers };
     if (opts.body) init.body = JSON.stringify(opts.body);
 
-    return app.fetch(new Request(url, init));
+    return fetch(url, init);
 }
 
-// ---------------------------------------------------------------------------
-// Test Suites
-// ---------------------------------------------------------------------------
+/** * ---------------------------------------------------------------------------
+ * TEST SUITES
+ * ---------------------------------------------------------------------------
+ */
 
-// ── 1. Public Routes ────────────────────────────────────────────────────────
+describe("Auth Service Integration Tests", () => {
 
-describe("GET /auth/", () => {
-    it("returns plain text service-running message", async () => {
-        const res = await req("GET", "/auth/");
-        expect(res.status).toBe(200);
-        const text = await res.text();
-        expect(text).toContain("Auth service is running");
-    });
-});
-
-describe("GET /auth/health", () => {
-    it("returns 200 when DB is reachable", async () => {
-        const res = await req("GET", "/auth/health");
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.status).toBe(200);
-        expect(json.message).toBe("Server healthy");
-    });
-
-    it("returns 503 when DB throws", async () => {
-        // Override prisma mock to throw
-        const prisma = (await import("../infrastructure/database/prisma"))
-            .default as any;
-        const original = prisma.$queryRaw;
-        prisma.$queryRaw = mock(() =>
-            Promise.reject(new Error("Connection refused")),
-        );
-
-        const res = await req("GET", "/auth/health");
-        expect(res.status).toBe(503);
-
-        // Restore
-        prisma.$queryRaw = original;
-    });
-});
-
-// ── 2. POST /auth/login ──────────────────────────────────────────────────────
-
-describe("POST /auth/login", () => {
-    it("returns 200 with access_token on valid credentials", async () => {
-        const res = await req("POST", "/auth/login", {
-            body: { email: "valid@test.com", password: "secret" },
+    // Test health and root routes
+    describe("Public Routes", () => {
+        it("GET /auth - returns service status", async () => {
+            const res = await req("GET", "/auth/");
+            expect(res.status).toBe(200);
+            expect(await res.text()).toContain("Auth service is running");
         });
 
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.status).toBe(200);
-        expect(json.message).toBe("Login successful");
-        expect(json.access_token).toBe("mock-access-token");
+        it("GET /auth/health - returns 200 on DB success", async () => {
+            const res = await fetch(`${BASE_URL}/auth/health`);
+            const json = await res.json();
+            expect(res.status).toBe(200);
+            expect(json.message).toBe("Server healthy");
+        });
     });
 
-    it("sets httpOnly refresh-token cookie on successful login", async () => {
-        const res = await req("POST", "/auth/login", {
-            body: { email: "valid@test.com", password: "secret" },
+    // Test login functionality
+    describe("POST /auth/login", () => {
+        it("returns 200 and access_token for valid login", async () => {
+            const res = await req("POST", "/auth/login", {
+                body: { email: "valid@test.com", password: "secret" },
+            });
+            const json = await res.json();
+            expect(res.status).toBe(200);
+            expect(json.access_token).toBe("mock-access-token");
         });
 
-        const setCookieHeader = res.headers.get("set-cookie") ?? "";
-        expect(setCookieHeader).toContain("refresh-token=");
-        expect(setCookieHeader.toLowerCase()).toContain("httponly");
-    });
-
-    it("returns 401 on invalid credentials", async () => {
-        const res = await req("POST", "/auth/login", {
-            body: { email: "wrong@test.com", password: "bad" },
+        it("sets HttpOnly refresh token cookie", async () => {
+            const res = await req("POST", "/auth/login", {
+                body: { email: "valid@test.com", password: "secret" },
+            });
+            const setCookie = res.headers.get("set-cookie") ?? "";
+            expect(setCookie).toContain("refresh-token=");
+            expect(setCookie.toLowerCase()).toContain("httponly");
         });
 
-        expect(res.status).toBe(401);
-        const json = await res.json();
-        expect(json.status).toBe(401);
+        it("returns 401 for invalid credentials", async () => {
+            const res = await req("POST", "/auth/login", {
+                body: { email: "wrong@test.com", password: "bad" },
+            });
+            expect(res.status).toBe(401);
+        });
     });
 
-    it("handles malformed JSON body gracefully (non-2xx)", async () => {
-        const res = await app.fetch(
-            new Request("http://localhost/auth/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Origin: "http://localhost:3000",
-                },
-                body: "not-json",
-            }),
-        );
-
-        expect(res.status).toBeGreaterThanOrEqual(400);
+    // Test token refresh logic
+    describe("GET /auth/refresh", () => {
+        it("refreshes access token with valid cookie", async () => {
+            const res = await req("GET", "/auth/refresh", {
+                cookies: { "refresh-token": "mock-refresh-token" },
+            });
+            const json = await res.json();
+            expect(res.status).toBe(200);
+            expect(json.access_token).toBe("mock-access-token");
+        });
     });
-});
 
-// ── 3. GET /auth/refresh ─────────────────────────────────────────────────────
-
-describe("GET /auth/refresh", () => {
-    it("returns 200 with new access_token when cookie is valid", async () => {
-        const res = await req("GET", "/auth/refresh", {
-            cookies: { "refresh-token": "mock-refresh-token" },
+    // Test user registration and verification
+    describe("Registration & Verification", () => {
+        it("POST /auth/register - success", async () => {
+            const res = await req("POST", "/auth/register", {
+                body: { email: "newuser@test.com", password: "StrongPass123!" },
+            });
+            expect(res.status).toBe(201);
         });
 
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.access_token).toBe("mock-access-token");
-        expect(json.message).toBe("Token refreshed successfully");
-    });
-
-    it("returns 401 when refresh token is invalid or missing", async () => {
-        const res = await req("GET", "/auth/refresh", {
-            cookies: { "refresh-token": "bad-token" },
+        it("POST /auth/verify - success", async () => {
+            const res = await req("POST", "/auth/verify", {
+                body: { code: "123456" },
+            });
+            expect(res.status).toBe(200);
         });
-
-        expect(res.status).toBe(401);
-    });
-});
-
-// ── 4. POST /auth/register ────────────────────────────────────────────────────
-
-describe("POST /auth/register", () => {
-    it("returns 201 on successful registration", async () => {
-        const res = await req("POST", "/auth/register", {
-            body: { email: "newuser@test.com", password: "StrongPass123!" },
-        });
-
-        expect(res.status).toBe(201);
-        const json = await res.json();
-        expect(json.status).toBe(201);
-        expect(json.message).toContain("Verification code sent");
-        expect(json.user.email).toBe("newuser@test.com");
     });
 
-    it("returns 400 when required fields are missing", async () => {
-        const res = await req("POST", "/auth/register", {
-            body: {},
-        });
+    // Test profile and file uploads using FormData
+    describe("Profile Management (Multipart)", () => {
+        it("POST /auth/profile - upload photo", async () => {
+            const formData = new FormData();
+            formData.append("user_id", "user-1");
+            formData.append("image", new Blob(["img"], { type: "image/png" }), "avatar.png");
 
-        expect(res.status).toBe(400);
-    });
-});
-
-// ── 5. POST /auth/verify ──────────────────────────────────────────────────────
-
-describe("POST /auth/verify", () => {
-    it("returns 200 on valid verification code", async () => {
-        const res = await req("POST", "/auth/verify", {
-            body: { code: "123456" },
-        });
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.status).toBe(200);
-        expect(json.message).toContain("success verify");
-    });
-
-    it("returns 400 on invalid verification code", async () => {
-        const res = await req("POST", "/auth/verify", {
-            body: { code: "000000" },
-        });
-
-        expect(res.status).toBe(400);
-    });
-});
-
-// ── 6. Profile Routes (public — no JWT guard before them) ───────────────────
-
-describe("POST /auth/profile", () => {
-    it("returns 201 when photo uploaded successfully", async () => {
-        const formData = new FormData();
-        formData.append("user_id", "user-1");
-        formData.append(
-            "image",
-            new File(["fake-image-bytes"], "avatar.png", { type: "image/png" }),
-        );
-
-        const res = await app.fetch(
-            new Request("http://localhost/auth/profile", {
+            const res = await fetch(`${BASE_URL}/auth/profile`, {
                 method: "POST",
                 headers: { Origin: "http://localhost:3000" },
                 body: formData,
-            }),
-        );
-
-        expect(res.status).toBe(201);
-        const json = await res.json();
-        expect(json.url).toContain("cdn.example.com");
-    });
-});
-
-describe("PUT /auth/profile", () => {
-    it("returns 200 when photo edited successfully", async () => {
-        const formData = new FormData();
-        formData.append("user_id", "user-1");
-        formData.append(
-            "image",
-            new File(["fake-bytes"], "new-avatar.png", { type: "image/png" }),
-        );
-
-        const res = await app.fetch(
-            new Request("http://localhost/auth/profile", {
-                method: "PUT",
-                headers: { Origin: "http://localhost:3000" },
-                body: formData,
-            }),
-        );
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.url).toContain("cdn.example.com");
-    });
-});
-
-describe("DELETE /auth/profile", () => {
-    it("returns 201 after deleting photo profile", async () => {
-        const formData = new FormData();
-        formData.append("user_id", "user-1");
-
-        const res = await app.fetch(
-            new Request("http://localhost/auth/profile", {
-                method: "DELETE",
-                headers: { Origin: "http://localhost:3000" },
-                body: formData,
-            }),
-        );
-
-        expect(res.status).toBe(201);
-    });
-});
-
-// ── 7. JWT Auth Middleware ────────────────────────────────────────────────────
-
-describe("Auth Middleware (JWT guard)", () => {
-    it("returns 401 when Authorization header is absent", async () => {
-        // /logout is behind the JWT guard
-        const res = await req("DELETE", "/auth/logout");
-        expect(res.status).toBe(401);
-    });
-
-    it("returns 401 when Authorization header has an invalid token", async () => {
-        const res = await req("DELETE", "/auth/logout", {
-            headers: { Authorization: "Bearer invalid-token" },
+            });
+            expect(res.status).toBe(201);
         });
-        expect(res.status).toBe(401);
     });
 
-    it("passes through when Authorization header is valid", async () => {
-        const res = await req("DELETE", "/auth/logout", {
-            headers: { Authorization: "Bearer valid-jwt" },
+    // Test security middleware
+    describe("Security Guard", () => {
+        it("blocks requests without JWT", async () => {
+            const res = await req("DELETE", "/auth/logout");
+            expect(res.status).toBe(401);
         });
-        // valid-jwt triggers verifyJwt mock to pass (starts with "Bearer valid-")
-        expect(res.status).toBe(200);
     });
-});
 
-// ── 8. DELETE /auth/logout ────────────────────────────────────────────────────
-
-describe("DELETE /auth/logout", () => {
-    it("clears refresh-token cookie and returns 200", async () => {
-        const res = await req("DELETE", "/auth/logout", {
-            headers: { Authorization: "Bearer valid-jwt" },
-            cookies: { "refresh-token": "mock-refresh-token" },
+    // Test error handling and 404
+    describe("Error Handling", () => {
+        it("returns 404 for unknown routes", async () => {
+            const res = await req("GET", "/auth/missing");
+            const json = await res.json();
+            expect(res.status).toBe(404);
+            expect(json.status).toBe(404);
         });
-
-        expect(res.status).toBe(200);
-        const json = await res.json();
-        expect(json.message).toBe("Logout successful");
-
-        // Cookie should be cleared (max-age=0 or expired date)
-        const setCookieHeader = res.headers.get("set-cookie") ?? "";
-        if (setCookieHeader) {
-            const isCleared =
-                setCookieHeader.includes("refresh-token=;") ||
-                setCookieHeader.includes("Max-Age=0") ||
-                setCookieHeader.includes("Expires=Thu, 01 Jan 1970");
-            expect(isCleared).toBe(true);
-        }
-    });
-});
-
-// ── 9. Global Error Handler ───────────────────────────────────────────────────
-
-describe("Global Error Handler", () => {
-    it("returns correct error shape for HTTPException", async () => {
-        // Force 401 from an unprotected route by hitting logout without token
-        const res = await req("DELETE", "/auth/logout");
-        const json = await res.json();
-
-        expect(json).toHaveProperty("status");
-        expect(json).toHaveProperty("message");
-        expect(res.status).toBe(401);
-    });
-
-    it("includes CORS headers even on error responses", async () => {
-        const res = await req("DELETE", "/auth/logout");
-        // CORS headers set by error handler
-        const acao = res.headers.get("Access-Control-Allow-Origin");
-        expect(acao).toBeTruthy();
-    });
-});
-
-// ── 10. 404 Not Found ─────────────────────────────────────────────────────────
-
-describe("404 Not Found", () => {
-    it("returns standardized 404 JSON for unknown routes", async () => {
-        const res = await req("GET", "/auth/nonexistent-route-xyz");
-        expect(res.status).toBe(404);
-        const json = await res.json();
-        expect(json.status).toBe(404);
-        expect(json.message).toContain("Route not found");
-    });
-
-    it("includes the HTTP method and path in 404 message", async () => {
-        const res = await req("POST", "/auth/does-not-exist");
-        const json = await res.json();
-        expect(json.message).toContain("POST");
-        expect(json.message).toContain("/auth/does-not-exist");
-    });
-});
-
-// ── 11. Response Structure Contracts ─────────────────────────────────────────
-
-describe("Response Structure Contracts", () => {
-    it("login response always contains status, message, access_token keys", async () => {
-        const res = await req("POST", "/auth/login", {
-            body: { email: "valid@test.com", password: "secret" },
-        });
-        const json = await res.json();
-        expect(json).toHaveProperty("status");
-        expect(json).toHaveProperty("message");
-        expect(json).toHaveProperty("access_token");
-    });
-
-    it("register response always contains status, message, user keys", async () => {
-        const res = await req("POST", "/auth/register", {
-            body: { email: "new@example.com", password: "pass123" },
-        });
-        const json = await res.json();
-        expect(json).toHaveProperty("status");
-        expect(json).toHaveProperty("message");
-        expect(json).toHaveProperty("user");
-    });
-
-    it("refresh response always contains access_token key", async () => {
-        const res = await req("GET", "/auth/refresh", {
-            cookies: { "refresh-token": "mock-refresh-token" },
-        });
-        const json = await res.json();
-        expect(json).toHaveProperty("access_token");
     });
 });

@@ -1,3 +1,4 @@
+import { AppError } from "../utils/error";
 import EmailModel from "./email.model";
 import EmailValidated from "./email.validated";
 
@@ -14,7 +15,11 @@ export default class EmailRead {
 
         /** Check if the verification code has already expired */
         if (!record || !record.user.id || new Date() > record.expired) {
-            throw { status: 400, message: "Verification code has expired" };
+            throw new AppError(
+                "Verification code has expired",
+                400,
+                "UNAUTHORIZE",
+            );
         }
 
         /** Compare the raw input with the stored argon2/bcrypt hash */
@@ -23,7 +28,11 @@ export default class EmailRead {
             record.code,
         );
         if (!isValid) {
-            throw { status: 400, message: "Verification code is incorrect" };
+            throw new AppError(
+                "Verification code is incorrect",
+                400,
+                "UNAUTHORIZE",
+            );
         }
 
         /** Delete the code after successful use to prevent reuse */

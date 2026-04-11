@@ -1,30 +1,7 @@
 import transport from "../../config/email";
 import { env } from "../../config";
-
-const handleSmtpError = (error: any) => {
-    let message = "Send failed:";
-
-    switch (error.code) {
-        case "ECONNECTION":
-        case "ETIMEDOUT":
-            message = `Network error - retry later: ${error.message}`;
-            break;
-        case "EAUTH":
-            message = `Authentication failed: ${error.message}`;
-            break;
-        case "EENVELOPE":
-            message = `Invalid recipients: ${error.rejected}`;
-            break;
-        default:
-            message = `Send failed: ${error.message}`;
-    }
-
-    return {
-        status: 400,
-        message,
-        error,
-    };
-};
+import { handleError, handleSmtpError } from "../error/separate";
+import { AppError } from "../error";
 
 // Generates a random 6-digit numeric code, hashes it, and saves it to the database.
 export const issueVerificationCode = async (userId: string) => {
@@ -39,12 +16,8 @@ export const issueVerificationCode = async (userId: string) => {
         });
 
         return { rawCode, hashedCode };
-    } catch (error) {
-        throw {
-            status: 500,
-            message: "Failed to generate verification code",
-            error,
-        };
+    } catch (error: any) {
+        throw handleError(new AppError("Failed to generate verification code", 500, "INTERNAL SERVER ERROR", error));
     }
 };
 

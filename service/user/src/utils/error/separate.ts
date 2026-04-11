@@ -68,10 +68,24 @@ export const handleError = (error: any) => {
     };
 };
 
-export const baseHandleError = (error: any) => {
-    return {
-        status: error.status || 500,
-        message: error.message || "Internal server error",
-        error: error.error || "Internal server error",
-    };
-}
+
+export const handleSmtpError = (error: any) => {
+    let message = "Send failed:";
+
+    switch (error.code) {
+        case "ECONNECTION":
+        case "ETIMEDOUT":
+            message = `Network error - retry later: ${error.message}`;
+            break;
+        case "EAUTH":
+            message = `Authentication failed: ${error.message}`;
+            break;
+        case "EENVELOPE":
+            message = `Invalid recipients: ${error.rejected}`;
+            break;
+        default:
+            message = `Send failed: ${error.message}`;
+    }
+
+    return new AppError(message, 400, "SMTP_ERROR", error);
+};
