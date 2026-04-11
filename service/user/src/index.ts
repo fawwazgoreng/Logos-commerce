@@ -1,11 +1,11 @@
-import { Context, Hono } from "hono";
+import { Hono } from "hono";
 import { StatusCode } from "hono/utils/http-status";
 import { setCookie, deleteCookie, getCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
 import { some } from "hono/combine";
 import { rateLimiter } from "hono-rate-limiter";
-import { getConnInfo , serveStatic } from "hono/bun";
+import { getConnInfo, serveStatic } from "hono/bun";
 import { prettyJSON } from "hono/pretty-json";
 import { HTTPException } from "hono/http-exception";
 
@@ -19,6 +19,7 @@ import EmailRead from "./email/email.read.";
 import EmailWrite from "./email/email.write";
 import { toHttpError } from "./utils/error/separate";
 import { AppError } from "./utils/error";
+import { logger } from "./infrastructure/logger/log";
 
 const app = new Hono();
 const userRead = new UserRead();
@@ -56,7 +57,7 @@ app.use(
     rateLimiter({
         windowMs: 15 * 60 * 1000,
         limit: 100,
-        keyGenerator: (c: Context): string | Promise<string> =>
+        keyGenerator: async (c): Promise<string> =>
             c.req.header("x-forwarded-for") ??
             c.req.header("cf-connecting-ip") ??
             getConnInfo(c).remote.address ??
@@ -160,23 +161,23 @@ auth.post("/verify", async (c) => {
 });
 
 auth.post("/profile", async (c) => {
-        try {
-            const request = await c.req.parseBody({ all: true });
-            const payload: createPhotoProfile = {
-                user_id: String(request["user_id"] || ""),
-                image: request["image"] as File,
-            };
-            const photoProfile = await userWrite.uploadPhotoProfile(payload);
-            c.status(201);
-            return c.json({
-                status: 201,
-                message: "success add profile",
-                url: photoProfile,
-            });
-        } catch (error) {
-            throw toHttpError(error);
-        }
-    })
+    try {
+        const request = await c.req.parseBody({ all: true });
+        const payload: createPhotoProfile = {
+            user_id: String(request["user_id"] || ""),
+            image: request["image"] as File,
+        };
+        const photoProfile = await userWrite.uploadPhotoProfile(payload);
+        c.status(201);
+        return c.json({
+            status: 201,
+            message: "success add profile",
+            url: photoProfile,
+        });
+    } catch (error) {
+        throw toHttpError(error);
+    }
+})
     .put("/profile", async (c) => {
         try {
             const request = await c.req.parseBody({ all: true });
@@ -270,10 +271,19 @@ app.onError(async (error: any, c) => {
                 message: error.message || "Internal server error",
                 error: null,
             }));
+        logger.error(body);
         return c.json(body);
     }
 
     /** Fallback response for errors that bypassed Error */
+    // Log error with request metadata
+    logger.error({
+        path: c.req.path,
+        method: c.req.method,
+        status: error.status || 500,
+        stack: Number(error.status) == 500 ? error.stack : "validate error",
+        message: error.message,
+    });
     return c.json({
         status,
         message: error?.message || "Internal server error",

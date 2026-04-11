@@ -30,7 +30,7 @@ export default class UserRead {
 
         if (!user.is_verify) {
             throw new AppError(
-                "okease veriy your gmail first",
+                "please veriy your gmail first",
                 401,
                 "INVALID_CREDENTIALS",
             );
