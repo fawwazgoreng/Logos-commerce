@@ -6,6 +6,10 @@ const product = new Hono();
 product
     .get("/", async (c) => {
         try {
+            const param = c.req.query();
+            const request = {
+                
+            }
         } catch (error: any) {
             throw handleError(error);
         }

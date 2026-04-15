@@ -1,8 +1,10 @@
-export default class ProductModel {
-    get = async () => {
+import { ProductRepositoryModel } from "./product.repository"
+
+export default class ProductModel implements ProductRepositoryModel  {
+    show = async () => {
         
     }
-    getById = async (id: string) => {
+    findById = async (id: string) => {
         
     }
     create = async () => {
