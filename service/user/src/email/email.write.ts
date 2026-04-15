@@ -1,8 +1,9 @@
 import { issueVerificationCode, sendEmail } from "../utils/etc/emailHelper";
 import EmailModel from "./email.model";
+import { EmailRepositoryWrite } from "./email.repository";
 import EmailValidated from "./email.validated";
 
-export default class EmailWrite {
+export default class EmailWrite implements EmailRepositoryWrite {
     constructor(
         private emailModel = new EmailModel(),
         private emailValidate = new EmailValidated(),
@@ -32,7 +33,5 @@ export default class EmailWrite {
 
             /** Send the raw (unhashed) code to the user's email address */
             await sendEmail(email, rawCode);
-
-            return { status: 201, message: "Verification code sent successfully" };
     };
 }

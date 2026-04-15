@@ -12,7 +12,7 @@ import { HTTPException } from "hono/http-exception";
 import prisma from "./infrastructure/database/prisma";
 import UserRead from "./user/user.read";
 import UserWrite from "./user/user.write";
-import EmailRead from "./email/email.read.";
+import EmailRead from "./email/email.read";
 import EmailWrite from "./email/email.write";
 import { buildAccessToken, verifyJwt } from "./utils/auth/auth";
 import { createPhotoProfile } from "./type/userTypes";

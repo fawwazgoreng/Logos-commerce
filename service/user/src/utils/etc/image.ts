@@ -1,8 +1,9 @@
 import * as path from "path";
 import * as fs from "fs";
 import { nanoid } from "nanoid";
+import { ImageRepository } from "../../type/baseRepository";
 
-export default class ImageHelper {
+export default class ImageHelper  implements ImageRepository {
     private location = "";
 
     constructor(dir: string) {
@@ -37,11 +38,12 @@ export default class ImageHelper {
         // Delete the old file first if it exists
         this.delete(oldUrl);
 
+        let path = "";
         // If new image is provided, save it and return the new URL
         if (newImage) {
-            return await this.save(newImage);
+            path =  await this.save(newImage);
         }
-        return "";
+        return path;
     };
 
     // Remove image file from the system

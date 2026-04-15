@@ -1,8 +1,9 @@
 import { AppError } from "../utils/error";
 import EmailModel from "./email.model";
+import { EmailRepositoryRead } from "./email.repository";
 import EmailValidated from "./email.validated";
 
-export default class EmailRead {
+export default class EmailRead implements EmailRepositoryRead {
     constructor(
         private emailModel = new EmailModel(),
         private emailValidated = new EmailValidated(),

@@ -4,8 +4,9 @@ import UserModel from "./user.model";
 import { hashingPassword } from "../utils/auth/hashPasword";
 import ImageHelper from "../utils/etc/image";
 import { AppError } from "../utils/error";
+import { UserRepositoryWrite } from "./user.repository";
 
-export default class UserWrite {
+export default class UserWrite implements UserRepositoryWrite{
     constructor(
         private userValidate = new UserValidate(),
         private userModel = new UserModel(),
@@ -26,7 +27,7 @@ export default class UserWrite {
             password: hashedPassword,
         };
 
-        return this.userModel.create(payload);
+        return await this.userModel.create(payload);
     };
 
     // VERIFY USER
@@ -37,7 +38,7 @@ export default class UserWrite {
             throw new AppError("User not found", 404, "USER_NOT_FOUND");
         }
 
-        return this.userModel.verify(id);
+        return await this.userModel.verify(id);
     };
 
     // UPLOAD PHOTO
@@ -55,7 +56,7 @@ export default class UserWrite {
         const url = await this.imageHelp.save(validated.image);
 
         // 4. update DB
-        return this.userModel.updateProfileImage({
+        return await this.userModel.updateProfileImage({
             id: req.user_id,
             image: url,
         });
@@ -79,7 +80,7 @@ export default class UserWrite {
         const newUrl = await this.imageHelp.edit(oldUrl, validated.image);
 
         // 4. update DB
-        return this.userModel.updateProfileImage({
+        return await this.userModel.updateProfileImage({
             id: req.user_id,
             image: newUrl,
             path: oldUrl,
@@ -103,6 +104,6 @@ export default class UserWrite {
         }
 
         // 3. clear DB
-        return this.userModel.clearProfileImage(user_id);
+        await this.userModel.clearProfileImage(user_id);
     };
 }

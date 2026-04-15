@@ -1,25 +1,47 @@
 import prisma from "../infrastructure/database/prisma";
-import { userRegisterValue } from "../type/userTypes";
+import { user, userRegisterValue, userWithPassword } from "../type/userTypes";
+import { UserRepositoryModel } from "./user.repository";
 
-export default class UserModel {
+export default class UserModel implements UserRepositoryModel {
+    show = async (req: {
+        where: any;
+        take: number;
+        skip: number;
+        orderBy: any;
+    }) => {
+        return (await prisma.user.findMany({
+            take: req.take,
+            skip: req.skip,
+            where: req.where,
+            orderBy: req.orderBy,
+            select: {
+                id: true,
+                roles: true,
+                email: true,
+                username: true,
+                is_verify: true,
+            },
+        })) as user[] | null;
+    };
+
     //  Find user by email (for login)
     findByEmail = async (email: string) => {
-        return prisma.user.findFirst({
+        return (await prisma.user.findFirst({
             where: { email },
             select: {
                 id: true,
                 roles: true,
                 email: true,
                 username: true,
+                is_verify: true,
                 password: true,
-                is_verify: true
             },
-        });
+        })) as userWithPassword | null;
     };
 
     //  Create user
     create = async (req: userRegisterValue) => {
-        return prisma.user.create({
+        return (await prisma.user.create({
             data: {
                 email: req.email,
                 username: req.username,
@@ -30,16 +52,17 @@ export default class UserModel {
             },
             select: {
                 id: true,
-                username: true,
-                email: true,
                 roles: true,
+                email: true,
+                username: true,
+                is_verify: true,
             },
-        });
+        })) as user;
     };
 
     //  Find user by ID
     findById = async (id: string) => {
-        return prisma.user.findFirst({
+        return (await prisma.user.findFirst({
             where: { id },
             select: {
                 id: true,
@@ -48,18 +71,35 @@ export default class UserModel {
                 username: true,
                 password: true,
             },
-        });
+        })) as userWithPassword | null;
     };
 
     //  Verify email
     verify = async (id: string) => {
-        return prisma.user.update({
+        return await prisma.user.update({
             where: { id },
             data: {
                 is_verify: true,
                 verify_at: new Date(),
             },
-        });
+        }) as {
+            is_verify: boolean;
+            verify_at: Date | null;
+        };
+    };
+
+    update = async (id: string, data: any) => {
+        return (await prisma.user.update({
+            where: { id },
+            data,
+            select: {
+                id: true,
+                roles: true,
+                email: true,
+                username: true,
+                is_verify: true,
+            },
+        })) as user;
     };
 
     //  Update profile image
@@ -102,6 +142,12 @@ export default class UserModel {
             select: {
                 id: true,
             },
+        });
+    };
+
+    delete = async (id: string) => {
+        await prisma.user.delete({
+            where: { id },
         });
     };
 }

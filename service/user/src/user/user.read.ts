@@ -1,12 +1,13 @@
-import { userLogin, refreshToken, refreshTokenCreate } from "../type/userTypes";
+import { userLogin, refreshToken, refreshTokenCreate, user } from "../type/userTypes";
 import { UserValidate } from "./user.validate";
 import UserModel from "./user.model";
 import RefreshTokenModel from "./refresh.model";
 import { decrypToken, encrypToken } from "../utils/auth/encrypToken";
 import { checkPassword } from "../utils/auth/hashPasword";
 import { AppError } from "../utils/error";
+import { UserRepositoryRead } from "./user.repository";
 
-export default class UserRead {
+export default class UserRead implements UserRepositoryRead {
     constructor(
         private validate = new UserValidate(),
         private userModel = new UserModel(),
@@ -57,10 +58,11 @@ export default class UserRead {
         const userResponse = {
             id: user.id,
             username: user.username,
-            role: user.roles as "seller" | "user",
+            roles: user.roles as "seller" | "user",
             email: user.email,
             created_at: now,
-        };
+            is_verify: user.is_verify,
+        } as user;
 
         // 5. create refresh token (DB)
         const refreshPayload: refreshTokenCreate = {
@@ -120,9 +122,10 @@ export default class UserRead {
         return {
             id: user.id,
             username: user.username,
-            role: user.roles as "seller" | "user",
+            roles: user.roles as "seller" | "user",
             email: user.email,
+            is_verify: user.is_verify,
             created_at: new Date(),
-        };
+        } as user;
     };
 }

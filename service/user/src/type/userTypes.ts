@@ -3,6 +3,13 @@ export type userLogin = {
     password: string;
 };
 
+export type userShowRequest = {
+    where: any;
+    take: number;
+    skip: number;
+    orderBy: any;
+};
+
 export type userToken = {
     id: string;
     email: string;
@@ -10,6 +17,18 @@ export type userToken = {
     role: "user" | "seller";
     expired: Date;
     created_at: Date;
+};
+
+export type user = {
+    id: string;
+    email: string;
+    username: string;
+    roles: "user" | "seller";
+    is_verify: boolean;
+};
+
+export type userWithPassword = user & {
+    password: string;
 };
 
 export type monitoring = {
