@@ -8,20 +8,18 @@ datasource db {
 }
 
 model Category {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  slug      String    @unique
-  products  Product[]
-  createdAt DateTime  @default(now())
-
-  @@map("categories")
+  id        String               @id @default(uuid())
+  name      String               @unique
+  slug      String               @unique
+  products  CategoryOnProducts[]
+  createdAt DateTime             @default(now())
 }
 
 model Product {
-  id         String   @id @default(uuid())
+  id         String               @id @default(uuid())
   storeId    String
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  category   CategoryOnProducts[]
 
   name        String
   slug        String @unique
@@ -42,7 +40,15 @@ model Product {
 
   @@index([storeId])
   @@index([categoryId])
-  @@map("products")
+}
+
+model CategoryOnProducts {
+  categoryId String
+  product    Product  @relation(fields: [ProductId], references: [id])
+  ProductId  String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([categoryId, ProductId])
 }
 
 model ProductAuditLog {

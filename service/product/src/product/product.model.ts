@@ -1,4 +1,4 @@
-import { ProductRepositoryModel } from "./product.repository"
+    import { ProductRepositoryModel } from "./product.repository"
 
 export default class ProductModel implements ProductRepositoryModel  {
     show = async () => {

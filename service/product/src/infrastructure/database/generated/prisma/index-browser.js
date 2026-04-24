@@ -144,6 +144,11 @@ exports.Prisma.ProductScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CategoryOnProductsScalarFieldEnum = {
+  categoryId: 'categoryId',
+  ProductId: 'ProductId'
+};
+
 exports.Prisma.ProductAuditLogScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
@@ -184,6 +189,7 @@ exports.Prisma.NullsOrder = {
 exports.Prisma.ModelName = {
   Category: 'Category',
   Product: 'Product',
+  CategoryOnProducts: 'CategoryOnProducts',
   ProductAuditLog: 'ProductAuditLog'
 };
 

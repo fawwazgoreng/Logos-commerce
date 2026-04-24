@@ -10,6 +10,8 @@ const configSchema = z.object({
     REDIS_PORT: z.number(),
     REDIS_PASSWORD: z.string().nullable(),
     REDIS_DB: z.number(),
+    ELASTICSEARCH_URL: z.url(),
+    ELASTICSEARCH_API_KEY: z.string().nullable(),
 });
 
 const envParsed = configSchema.safeParse(process.env);
