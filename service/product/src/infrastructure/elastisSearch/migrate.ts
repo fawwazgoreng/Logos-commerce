@@ -14,6 +14,7 @@ const migrate = async () => {
             skip,
             select: {
                 id: true,
+                storeId: true,
                 name: true,
                 slug:true,
                 description: true,
@@ -40,6 +41,7 @@ const migrate = async () => {
             { index: { _index: "product", _id: String(product.id) } },
             {
                 id: String(product.id),
+                storeId: product.storeId,
                 name: product.name,
                 slug: product.slug,
                 description: product.description,
@@ -51,7 +53,7 @@ const migrate = async () => {
                 category: {
                     id: product.category.map(i => i.category.id),
                     name: product.category.map(i => i.category.name),
-                    name: product.category.map(i => i.category.slug),
+                    slug: product.category.map(i => i.category.slug),
                 }
             },
         ]);

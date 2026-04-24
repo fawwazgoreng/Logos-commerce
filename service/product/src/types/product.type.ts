@@ -1,5 +1,5 @@
-import { ProductAuditLog } from "./audit";
-import { Category } from "./category";
+import { ProductAuditLog } from "./audit.type";
+import { Category } from "./category.type";
 
 export type product = {
     id: string;

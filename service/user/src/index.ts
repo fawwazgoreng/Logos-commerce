@@ -77,6 +77,17 @@ app.use(
     }),
 );
 
+app.use("*", async (c, next) => {
+    const log = {
+        method: c.req.method,
+        path: c.req.path,
+        headers: c.req.header,
+        body: await c.req.json(),
+    };
+    logger.info(log);
+    await next();
+})
+
 // --- Public Routes ---
 
 // Service availability indicator

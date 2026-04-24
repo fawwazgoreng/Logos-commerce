@@ -1,4 +1,4 @@
-export abstract class BaseReposirotyModel<T , R = T[]> {
+export abstract class BaseRepositoryModel<T , R = T[]> {
     abstract create(data: any): Promise<T>
     abstract show(data: any): Promise<R>
     abstract update(id: string | number, data: any): Promise<T>

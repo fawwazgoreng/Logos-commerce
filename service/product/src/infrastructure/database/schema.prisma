@@ -20,7 +20,7 @@ model Product {
     storeId    String
     categoryId String
     category   CategoryOnProducts[]
-
+    
     name        String
     slug        String @unique
     description String @db.Text

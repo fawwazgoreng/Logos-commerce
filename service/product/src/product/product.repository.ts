@@ -1,7 +1,7 @@
-import { BaseReposirotyModel, BaseRepositoryRead, BaseRepositoryWrite } from "../types/baseRepository";
-import { product } from "../types/product";
+import { BaseRepositoryModel, BaseRepositoryRead, BaseRepositoryWrite } from "../types/baseRepository";
+import { product } from "../types/product.type";
 
-export abstract class ProductRepositoryModel implements BaseReposirotyModel<product> {
+export abstract class ProductRepositoryModel implements BaseRepositoryModel<product> {
     abstract delete(id: string | number): void;
     abstract create(data: any): Promise<product>;
     abstract update(id: string | number, data: any): Promise<product>;
