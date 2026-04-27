@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { StatusCode } from "hono/utils/http-status";
-import { setCookie, deleteCookie, getCookie } from "hono/cookie";
+import { deleteCookie} from "hono/cookie";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
 import { some } from "hono/combine";
@@ -8,29 +8,20 @@ import { rateLimiter } from "hono-rate-limiter";
 import { getConnInfo, serveStatic } from "hono/bun";
 import { prettyJSON } from "hono/pretty-json";
 import { HTTPException } from "hono/http-exception";
-
 import prisma from "./infrastructure/database/prisma";
-import UserRead from "./user/user.read";
 import UserWrite from "./user/user.write";
-import EmailRead from "./email/email.read";
-import EmailWrite from "./email/email.write";
-import { buildAccessToken, verifyJwt } from "./utils/auth/auth";
+import {  verifyJwt } from "./utils/auth/auth";
 import { createPhotoProfile } from "./type/userTypes";
 import { env } from "./config";
 import { toHttpError } from "./utils/error/separate";
 import { AppError } from "./utils/error";
 import { logger } from "./infrastructure/logger/log";
-
-// --- Constants ---
-const REFRESH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+import authRoute from "./user/user.route";
 
 // --- App & Service Instances ---
 const app = new Hono();
 const auth = new Hono(); // Standalone router for authentication sub-routes
-const userRead = new UserRead();
 const userWrite = new UserWrite();
-const emailRead = new EmailRead();
-const emailWrite = new EmailWrite();
 
 // --- Middleware Definitions ---
 
@@ -112,63 +103,7 @@ auth.use(
     }),
 );
 
-// Process login and issue HTTP-only refresh token via cookies
-auth.post("/login", async (c) => {
-    try {
-        const body = await c.req.json();
-        const { user, token: refreshToken } = await userRead.login(body);
-        setCookie(c, "refresh-token", refreshToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: "Strict",
-            path: "/",
-            expires: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-        });
-        return c.json({
-            status: 200,
-            message: "Login successful",
-            access_token: buildAccessToken(user),
-        });
-    } catch (error: any) {
-        throw toHttpError(error);
-    }
-});
-
-// Generate a new access token using a valid refresh token cookie
-auth.get("/refresh", async (c) => {
-    try {
-        const user = await userRead.refresh(String(getCookie(c, "refresh-token")));
-        return c.json({
-            status: 200,
-            message: "Token refreshed successfully",
-            access_token: buildAccessToken(user),
-        });
-    } catch (error: any) {
-        throw toHttpError(error);
-    }
-});
-
-// Register new users and trigger verification email
-auth.post("/register", async (c) => {
-    try {
-        const user = await userWrite.register(await c.req.json());
-        await emailWrite.create(user.id, user.email);
-        return c.json({ status: 201, message: "Verification code sent, check your email", user }, 201);
-    } catch (error: any) {
-        throw toHttpError(error);
-    }
-});
-
-// Validate the verification code and activate user account
-auth.post("/verify", async (c) => {
-    try {
-        const userId = await emailRead.verify(await c.req.json());
-        await userWrite.verify(String(userId));
-        return c.json({ status: 200, message: "Email verified successfully" });
-    } catch (error: any) {
-        throw toHttpError(error);
-    }
-});
+auth.route("/" , authRoute)
 
 // --- Protected Routes (JWT required) ---
 
