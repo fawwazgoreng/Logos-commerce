@@ -4,7 +4,9 @@ import { EsRepositoryCase } from "./es.repository";
 export default class EsCase implements EsRepositoryCase {
     constructor(private esModel = new ESModel()) { }
     
-    index = async () => {}
+    index = async (data: any) => {
+        await this.esModel.index(data);
+    }
     update = async () => {}
     search = async () => {}
     delete = async (id: string) => {

@@ -6,7 +6,9 @@ export default class ESModel implements EsRepositoryModel {
     constructor(private es = elasticsearch) { }
     
     search = async () => {
-        
+        return await this.es.index({
+            index: this.INDEX,
+        });
     }
     
     index = async (data: any) => {
