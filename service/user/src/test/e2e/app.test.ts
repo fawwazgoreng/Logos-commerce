@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeAll, afterAll } from "bun:test";
-import app from "..";
+import app from "../..";
 
 /** * ---------------------------------------------------------------------------
  * SERVER SETUP
